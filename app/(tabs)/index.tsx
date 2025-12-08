@@ -1,12 +1,22 @@
 import ExerciseList from '@/components/ExerciseList';
 import WorkoutScreen from '@/components/WorkoutScreen';
 import { EXERCISE_DURATION, REST_DURATION, TOTAL_ROUNDS } from '@/constants/exercises';
+import { getSettings } from '@/utils/storage';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 export default function HomeScreen() {
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
+  const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const settings = await getSettings();
+      setBackgroundColor(settings.appBackgroundColor);
+    };
+    loadSettings();
+  }, []);
 
   const startWorkout = () => {
     setIsWorkoutActive(true);
@@ -25,7 +35,7 @@ export default function HomeScreen() {
 
   // Startseite
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style="light" />
       <View style={styles.startScreen}>
         <Text style={styles.title}>BackFlow</Text>
@@ -49,7 +59,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a', // Dunkelgrauer Hintergrund
   },
   startScreen: {
     flex: 1,

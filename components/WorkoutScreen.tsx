@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import { getSettings } from '@/utils/storage';
 import { StatusBar } from 'expo-status-bar';
 import {
   EXERCISES,
@@ -21,8 +22,17 @@ export default function WorkoutScreen({ onCancel }: WorkoutScreenProps) {
   const [timeRemaining, setTimeRemaining] = useState(GET_READY_DURATION);
   const [elapsedTime, setElapsedTime] = useState(0); // Für reps-Übungen (Stoppuhr)
   const [isPaused, setIsPaused] = useState(false);
+  const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
   
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const settings = await getSettings();
+      setBackgroundColor(settings.appBackgroundColor);
+    };
+    loadSettings();
+  }, []);
 
   const getCurrentExercise = (): Exercise => EXERCISES[currentExerciseIndex];
   const getNextExercise = (): Exercise => {
@@ -142,7 +152,7 @@ export default function WorkoutScreen({ onCancel }: WorkoutScreenProps) {
   // Get Ready Screen
   if (workoutState === 'getReady') {
     return (
-      <SafeAreaView style={[styles.container, styles.getReadyBg]}>
+      <SafeAreaView style={[styles.container, { backgroundColor }]}>
         <StatusBar style="light" />
         <View style={styles.workoutScreen}>
           <View style={styles.roundInfo}>
@@ -181,7 +191,7 @@ export default function WorkoutScreen({ onCancel }: WorkoutScreenProps) {
   const isRepsExercise = currentExercise.type === 'reps';
 
   return (
-    <SafeAreaView style={[styles.container, styles.exerciseBg]}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style="light" />
       <View style={styles.workoutScreen}>
         <TouchableOpacity
@@ -229,7 +239,6 @@ export default function WorkoutScreen({ onCancel }: WorkoutScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
   },
   workoutScreen: {
     flex: 1,
@@ -374,14 +383,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ffffff',
     letterSpacing: 1,
-  },
-  exerciseBg: {
-    backgroundColor: '#166534', // Dunkelgrün für Übung
-  },
-  restBg: {
-    backgroundColor: '#1e3a5f', // Dunkelblau für Pause
-  },
-  getReadyBg: {
-    backgroundColor: '#92400e', // Orange für Get Ready
   },
 });

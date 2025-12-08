@@ -18,7 +18,9 @@ export default function ExerciseList() {
     <View style={styles.exerciseList}>
       <Text style={styles.exerciseListTitle}>Übungen:</Text>
       {allExercises.map((exercise, index) => (
-        <View key={exercise.name} style={styles.exerciseItem}>
+        <View
+          key={exercise.name}
+          style={styles.exerciseItem}>
           <Text style={styles.exerciseNumber}>{index + 1}.</Text>
           <Text style={styles.exerciseName}>{exercise.name}</Text>
           <Text style={styles.exerciseType}>

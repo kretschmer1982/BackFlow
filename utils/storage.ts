@@ -4,6 +4,93 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WORKOUTS_KEY = '@backflow_workouts';
 const CUSTOM_EXERCISES_KEY = '@backflow_custom_exercises';
+const SETTINGS_KEY = '@backflow_settings';
+
+// Typ für Einstellungen
+export interface BackflowSettings {
+  // Globale Hintergrundfarbe für die gesamte App
+  appBackgroundColor: string;
+  // Trainings-Erinnerungen
+  enableReminders: boolean;
+  // Ausgewählte Wochentage für Erinnerungen (z.B. 'mon', 'tue', ...)
+  reminderDays: string[];
+}
+
+// Standard-Einstellungen
+const DEFAULT_SETTINGS: BackflowSettings = {
+  // Standard: komplett dunkel/schwarz
+  appBackgroundColor: '#000000',
+  enableReminders: false,
+  reminderDays: [],
+};
+
+// Einstellungen laden
+export async function getSettings(): Promise<BackflowSettings> {
+  try {
+    const jsonValue = await AsyncStorage.getItem(SETTINGS_KEY);
+    if (jsonValue != null) {
+      const parsed = JSON.parse(jsonValue);
+
+      // Migration: Basis sind Default-Settings, dann gespeicherte Settings
+      let migrated: any = {
+        ...DEFAULT_SETTINGS,
+        ...parsed,
+      };
+
+      // Falls noch ein alter exerciseBackgroundColor-Wert existiert,
+      // übernehme ihn als appBackgroundColor.
+      if (!migrated.appBackgroundColor && migrated.exerciseBackgroundColor) {
+        migrated.appBackgroundColor = migrated.exerciseBackgroundColor;
+      }
+
+      // Bereinige alte Properties
+      if (migrated.exerciseBackgroundColor) {
+        delete migrated.exerciseBackgroundColor;
+      }
+
+      // ReminderDays immer als Array sicherstellen
+      if (!Array.isArray(migrated.reminderDays)) {
+        migrated.reminderDays = [];
+      }
+
+      const settings: BackflowSettings = {
+        appBackgroundColor: migrated.appBackgroundColor || DEFAULT_SETTINGS.appBackgroundColor,
+        enableReminders:
+          typeof migrated.enableReminders === 'boolean'
+            ? migrated.enableReminders
+            : DEFAULT_SETTINGS.enableReminders,
+        reminderDays: migrated.reminderDays,
+      };
+
+      // Speichere migrierte Settings zurück
+      await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+
+      return settings;
+    }
+    return DEFAULT_SETTINGS;
+  } catch (error) {
+    console.error('Fehler beim Laden der Einstellungen:', error);
+    return DEFAULT_SETTINGS;
+  }
+}
+
+// Einstellungen speichern (führt Merge mit bestehenden Werten durch)
+export async function updateSettings(
+  partialSettings: Partial<BackflowSettings>
+): Promise<BackflowSettings | null> {
+  try {
+    const current = await getSettings();
+    const updated: BackflowSettings = {
+      ...current,
+      ...partialSettings,
+    };
+    await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
+    return updated;
+  } catch (error) {
+    console.error('Fehler beim Speichern der Einstellungen:', error);
+    return null;
+  }
+}
 
 // Alle Workouts laden
 export async function getWorkouts(): Promise<Workout[]> {

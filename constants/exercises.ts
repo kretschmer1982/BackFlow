@@ -70,19 +70,35 @@ export const EXERCISE_IMAGE_MAP: Record<string, number> = {
   'Bird-Dog': require('../assets/images/birddog.png'),
 };
 
+// Fallback-Bild, wenn keine spezifische Zuordnung oder URL vorhanden ist
+const DEFAULT_EXERCISE_IMAGE = require('../assets/images/default.png');
+
 // Funktion zum Abrufen des Bildes für eine Übung
-export function getExerciseImage(exerciseName: string, fallbackImage: string | number): string | number {
-  // Wenn es ein lokales Bild gibt, verwende es
+export function getExerciseImage(
+  exerciseName: string,
+  fallbackImage?: string | number
+): string | number {
+  // 1) Wenn es ein lokales Bild für den Übungsnamen gibt, verwende es
   if (EXERCISE_IMAGE_MAP[exerciseName]) {
     return EXERCISE_IMAGE_MAP[exerciseName];
   }
-  // Sonst verwende das Fallback-Bild (URL oder require)
-  return fallbackImage;
+
+  // 2) Wenn ein lokales Fallback (require) übergeben wurde, verwende es
+  if (typeof fallbackImage === 'number') {
+    return fallbackImage;
+  }
+
+  // 3) Für Strings (z.B. alte Platzhalter-URLs) und fehlende Werte:
+  //    immer das Default-Bild verwenden
+  return DEFAULT_EXERCISE_IMAGE;
 }
 
 // Hilfsfunktion zum Erstellen der Image-Source für React Native Image-Komponenten
-export function getImageSource(exerciseName: string, fallbackImage: string | number | undefined) {
-  const image = getExerciseImage(exerciseName, fallbackImage || '');
+export function getImageSource(
+  exerciseName: string,
+  fallbackImage?: string | number
+) {
+  const image = getExerciseImage(exerciseName, fallbackImage);
   return typeof image === 'number' ? image : { uri: image };
 }
 

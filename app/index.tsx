@@ -1,5 +1,5 @@
 import { Workout } from '@/types/interfaces';
-import { deleteWorkout, getWorkouts } from '@/utils/storage';
+import { deleteWorkout, getWorkouts, getSettings } from '@/utils/storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
@@ -14,10 +14,51 @@ import {
   View,
 } from 'react-native';
 
+function parseHexColor(hex: string) {
+  const sanitized = hex.replace('#', '');
+  if (sanitized.length !== 6) {
+    return { r: 0, g: 0, b: 0 };
+  }
+  const r = parseInt(sanitized.slice(0, 2), 16);
+  const g = parseInt(sanitized.slice(2, 4), 16);
+  const b = parseInt(sanitized.slice(4, 6), 16);
+  return { r, g, b };
+}
+
+function blendHexColors(baseHex: string, blendHex: string, factor: number) {
+  const base = parseHexColor(baseHex);
+  const blend = parseHexColor(blendHex);
+  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+  const r = clamp(base.r * (1 - factor) + blend.r * factor);
+  const g = clamp(base.g * (1 - factor) + blend.g * factor);
+  const b = clamp(base.b * (1 - factor) + blend.b * factor);
+  const toHex = (v: number) => v.toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function getWorkoutCardColors(backgroundColor: string) {
+  const { r, g, b } = parseHexColor(backgroundColor);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const isDark = luminance < 0.5;
+
+  if (isDark) {
+    // Dunkler Hintergrund: Karten leicht aufhellen
+    const cardBackground = blendHexColors(backgroundColor, '#ffffff', 0.08);
+    const cardBorder = blendHexColors(backgroundColor, '#ffffff', 0.16);
+    return { cardBackground, cardBorder };
+  } else {
+    // Heller Hintergrund: Karten leicht abdunkeln
+    const cardBackground = blendHexColors(backgroundColor, '#000000', 0.08);
+    const cardBorder = blendHexColors(backgroundColor, '#000000', 0.16);
+    return { cardBackground, cardBorder };
+  }
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [showFabMenu, setShowFabMenu] = useState(false);
+  const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
 
   const loadWorkouts = useCallback(async () => {
     const loadedWorkouts = await getWorkouts();
@@ -26,11 +67,17 @@ export default function HomeScreen() {
     setWorkouts(loadedWorkouts);
   }, []);
 
+  const loadSettings = useCallback(async () => {
+    const settings = await getSettings();
+    setBackgroundColor(settings.appBackgroundColor);
+  }, []);
+
   // Lade Workouts beim ersten Mount und wenn Screen fokussiert wird
   useFocusEffect(
     useCallback(() => {
       loadWorkouts();
-    }, [loadWorkouts])
+      loadSettings();
+    }, [loadWorkouts, loadSettings])
   );
 
   const handleWorkoutPress = (workout: Workout) => {
@@ -85,34 +132,41 @@ export default function HomeScreen() {
     router.push('/create-exercise');
   };
 
-  const renderWorkoutItem = ({ item }: { item: Workout }) => (
-    <TouchableOpacity
-      style={styles.workoutItem}
-      onPress={() => handleWorkoutPress(item)}
-      activeOpacity={0.7}>
-      <View style={styles.workoutContent}>
-        <Text style={styles.workoutName}>{item.name}</Text>
-        <Text style={styles.workoutInfo}>
-          {item.exercises.length} {item.exercises.length === 1 ? 'Übung' : 'Übungen'}
-        </Text>
-      </View>
-      <View style={styles.actionButtons}>
-        <Pressable
-          style={styles.editButton}
-          onPress={(e) => handleEditWorkout(item, e)}>
-          <Text style={styles.editButtonText}>✎</Text>
-        </Pressable>
-        <Pressable
-          style={styles.deleteButton}
-          onPress={(e) => handleDeleteWorkout(item.id, e)}>
-          <Text style={styles.deleteButtonText}>×</Text>
-        </Pressable>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderWorkoutItem = ({ item }: { item: Workout }) => {
+    const { cardBackground, cardBorder } = getWorkoutCardColors(backgroundColor);
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.workoutItem,
+          { backgroundColor: cardBackground, borderColor: cardBorder },
+        ]}
+        onPress={() => handleWorkoutPress(item)}
+        activeOpacity={0.7}>
+        <View style={styles.workoutContent}>
+          <Text style={styles.workoutName}>{item.name}</Text>
+          <Text style={styles.workoutInfo}>
+            {item.exercises.length} {item.exercises.length === 1 ? 'Übung' : 'Übungen'}
+          </Text>
+        </View>
+        <View style={styles.actionButtons}>
+          <Pressable
+            style={styles.editButton}
+            onPress={(e) => handleEditWorkout(item, e)}>
+            <Text style={styles.editButtonText}>✎</Text>
+          </Pressable>
+          <Pressable
+            style={styles.deleteButton}
+            onPress={(e) => handleDeleteWorkout(item.id, e)}>
+            <Text style={styles.deleteButtonText}>×</Text>
+          </Pressable>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style="light" />
       <View style={styles.header}>
         <Text style={styles.title}>BackFlow</Text>
@@ -134,6 +188,15 @@ export default function HomeScreen() {
           contentContainerStyle={styles.listContent}
         />
       )}
+
+      <View style={styles.settingsButtonContainer}>
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => router.push('/settings')}
+          activeOpacity={0.8}>
+          <Text style={styles.settingsButtonText}>⚙</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.fabContainer}>
         {showFabMenu && (
@@ -166,7 +229,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a', // Zurück zu dunklem Hintergrund
   },
   header: {
     padding: 24,
@@ -190,7 +252,6 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   workoutItem: {
-    backgroundColor: '#2a2a2a',
     borderRadius: 12,
     padding: 20,
     marginBottom: 12,
@@ -271,6 +332,25 @@ const styles = StyleSheet.create({
     right: 24,
     bottom: 24,
     alignItems: 'flex-end',
+  },
+  settingsButtonContainer: {
+    position: 'absolute',
+    left: 24,
+    bottom: 24,
+  },
+  settingsButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    backgroundColor: '#3a3a3a',
+    borderWidth: 1,
+    borderColor: '#555555',
+  },
+  settingsButtonText: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#ffffff',
+    letterSpacing: 0.5,
   },
   fabMenu: {
     marginBottom: 12,

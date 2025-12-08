@@ -1,7 +1,7 @@
 import { GET_READY_DURATION, getImageSource } from '@/constants/exercises';
 import { Workout, WorkoutExercise } from '@/types/interfaces';
 import { playBeep } from '@/utils/sound';
-import { getWorkoutById } from '@/utils/storage';
+import { getSettings, getWorkoutById } from '@/utils/storage';
 import { Audio } from 'expo-av';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -14,6 +14,7 @@ export default function RunWorkoutScreen() {
   const router = useRouter();
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>();
   const [workout, setWorkout] = useState<Workout | null>(null);
+  const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
   const [workoutState, setWorkoutState] = useState<WorkoutState>('getReady');
   const [currentRound, setCurrentRound] = useState(1);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
@@ -40,6 +41,15 @@ export default function RunWorkoutScreen() {
     };
     loadWorkout();
   }, [workoutId, router]);
+
+  // Globale Hintergrundfarbe laden
+  useEffect(() => {
+    const loadSettings = async () => {
+      const settings = await getSettings();
+      setBackgroundColor(settings.appBackgroundColor);
+    };
+    loadSettings();
+  }, []);
 
   // Audio-Modus setzen
   useEffect(() => {
@@ -175,7 +185,7 @@ export default function RunWorkoutScreen() {
 
   if (!workout) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor }]}>
         <StatusBar style="light" />
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Lade Workout...</Text>
@@ -187,7 +197,7 @@ export default function RunWorkoutScreen() {
   // Completion Screen
   if (workoutState === 'completed') {
     return (
-      <SafeAreaView style={[styles.container, styles.completedBg]}>
+      <SafeAreaView style={[styles.container, { backgroundColor }]}>
         <StatusBar style="light" />
         <View style={styles.completedScreen}>
           <View style={styles.completedContent}>
@@ -197,7 +207,7 @@ export default function RunWorkoutScreen() {
             <Text style={styles.completedWorkoutName}>{workout.name}</Text>
           </View>
           <Pressable style={styles.homeButton} onPress={() => router.push('/')}>
-            <Text style={styles.homeButtonText}>Zum Home</Text>
+            <Text style={styles.homeButtonText}>🏠</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -207,7 +217,7 @@ export default function RunWorkoutScreen() {
   const currentExercise = getCurrentExercise();
   if (!currentExercise) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor }]}>
         <StatusBar style="light" />
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Keine Übungen gefunden</Text>
@@ -219,7 +229,7 @@ export default function RunWorkoutScreen() {
   // Get Ready Screen
   if (workoutState === 'getReady') {
     return (
-      <SafeAreaView style={[styles.container, styles.getReadyBg]}>
+      <SafeAreaView style={[styles.container, { backgroundColor }]}>
         <StatusBar style="light" />
         <View style={styles.workoutScreen}>
           <View style={styles.roundInfo}>
@@ -265,7 +275,7 @@ export default function RunWorkoutScreen() {
   const isRepsExercise = currentExercise.type === 'reps';
 
   return (
-    <SafeAreaView style={[styles.container, styles.exerciseBg]}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style="light" />
       <View style={styles.workoutScreen}>
         <TouchableOpacity
@@ -320,7 +330,6 @@ export default function RunWorkoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
   },
   loadingContainer: {
     flex: 1,
@@ -469,15 +478,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     letterSpacing: 1,
   },
-  exerciseBg: {
-    backgroundColor: '#166534',
-  },
-  getReadyBg: {
-    backgroundColor: '#92400e',
-  },
-  completedBg: {
-    backgroundColor: '#1a1a1a',
-  },
   completedScreen: {
     flex: 1,
     justifyContent: 'center',
@@ -512,24 +512,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   homeButton: {
-    backgroundColor: '#4ade80',
-    paddingVertical: 18,
-    paddingHorizontal: 48,
-    borderRadius: 12,
-    minWidth: 200,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 999,
     alignItems: 'center',
   },
   homeButtonText: {
-    fontSize: 18,
+    fontSize: 64,
     fontWeight: 'bold',
-    color: '#1a1a1a',
-    letterSpacing: 1,
+    color: '#ffffff',
   },
   exerciseImage: {
     width: 300,
     height: 200,
     borderRadius: 16,
-    marginBottom: 20,
+    marginTop: 24,
+    marginBottom: 24,
     backgroundColor: '#2a2a2a',
     alignSelf: 'center',
     overflow: 'hidden',

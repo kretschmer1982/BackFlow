@@ -1,6 +1,6 @@
 import { Exercise, EXERCISES, getImageSource } from '@/constants/exercises';
 import { Workout, WorkoutExercise } from '@/types/interfaces';
-import { getCustomExercises, getWorkoutById, saveCustomExercise, saveWorkout } from '@/utils/storage';
+import { getCustomExercises, getWorkoutById, saveCustomExercise, saveWorkout, getSettings } from '@/utils/storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -21,6 +21,7 @@ export default function CreateWorkoutScreen() {
   const router = useRouter();
   const { workoutId } = useLocalSearchParams<{ workoutId?: string }>();
   const [workoutName, setWorkoutName] = useState('');
+  const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
   const [selectedExercises, setSelectedExercises] = useState<
     Map<string, WorkoutExercise>
   >(new Map());
@@ -67,6 +68,15 @@ export default function CreateWorkoutScreen() {
       loadCustomExercises();
     }, [])
   );
+
+  // Lade globale Hintergrundfarbe
+  useEffect(() => {
+    const loadSettings = async () => {
+      const settings = await getSettings();
+      setBackgroundColor(settings.appBackgroundColor);
+    };
+    loadSettings();
+  }, []);
 
   const toggleExercise = (exercise: Exercise) => {
     const newSelected = new Map(selectedExercises);
@@ -197,7 +207,7 @@ export default function CreateWorkoutScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style="light" />
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>

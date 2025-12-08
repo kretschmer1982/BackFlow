@@ -1,8 +1,8 @@
 import { Exercise } from '@/constants/exercises';
-import { getCustomExercises, saveCustomExercise } from '@/utils/storage';
+import { getCustomExercises, saveCustomExercise, getSettings } from '@/utils/storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Pressable,
@@ -16,6 +16,7 @@ import {
 
 export default function CreateExerciseScreen() {
   const router = useRouter();
+  const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
   const [exercise, setExercise] = useState<Partial<Exercise>>({
     name: '',
     type: 'duration',
@@ -23,6 +24,14 @@ export default function CreateExerciseScreen() {
     instructions: '',
     image: 'https://placehold.co/600x400/png?text=New+Exercise',
   });
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const settings = await getSettings();
+      setBackgroundColor(settings.appBackgroundColor);
+    };
+    loadSettings();
+  }, []);
 
   const handleSave = async () => {
     if (!exercise.name?.trim()) {
@@ -62,7 +71,7 @@ export default function CreateExerciseScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style="light" />
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
@@ -143,7 +152,8 @@ export default function CreateExerciseScreen() {
                 if (!isNaN(num) && num > 0) {
                   setExercise({ ...exercise, amount: num });
                 } else if (text === '') {
-                  setExercise({ ...exercise, amount: 0 });
+                  // Eingabe gelöscht: amount nicht auf 0 setzen, sondern leer lassen
+                  setExercise({ ...exercise, amount: undefined });
                 }
               }}
               placeholder={exercise.type === 'duration' ? '40' : '10'}
@@ -260,4 +270,5 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 });
+
 
