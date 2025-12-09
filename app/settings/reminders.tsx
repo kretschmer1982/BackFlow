@@ -3,12 +3,12 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
+    Pressable,
+    SafeAreaView,
+    StyleSheet,
+    Switch,
+    Text,
+    View,
 } from 'react-native';
 
 const DAYS = [
@@ -82,15 +82,6 @@ export default function ReminderSettingsScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style={statusBarStyle} />
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Text
-            style={[
-              styles.backButtonText,
-              isLightBackground && styles.backButtonTextOnLight,
-            ]}>
-            ← Zurück
-          </Text>
-        </Pressable>
         <Text
           style={[
             styles.title,

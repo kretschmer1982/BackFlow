@@ -3,6 +3,8 @@ import { Exercise } from '@/constants/exercises';
 // Workout-Übung: Kann die Standard-Übung überschreiben
 export interface WorkoutExercise extends Exercise {
   image?: string | number;
+  // Eindeutige Instanz-ID, um mehrere Vorkommen derselben Übung unterscheiden zu können
+  instanceId?: string;
   // Alle Felder von Exercise sind vorhanden, können aber überschrieben werden
 }
 

@@ -3,11 +3,11 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
 import {
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
+    Pressable,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 
 function isLightColor(color: string): boolean {
@@ -44,15 +44,6 @@ export default function SettingsScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style={statusBarStyle} />
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Text
-            style={[
-              styles.backButtonText,
-              isLightBackground && styles.backButtonTextOnLight,
-            ]}>
-            ← Zurück
-          </Text>
-        </Pressable>
         <Text
           style={[
             styles.title,

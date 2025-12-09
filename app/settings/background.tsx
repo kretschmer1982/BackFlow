@@ -3,13 +3,12 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
-  FlatList,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    FlatList,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 // 25 gängige Farben (dunkel, grau, hell + Akzentfarben)
@@ -91,15 +90,6 @@ export default function BackgroundSettingsScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style={statusBarStyle} />
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Text
-            style={[
-              styles.backButtonText,
-              isLightBackground && styles.backButtonTextOnLight,
-            ]}>
-            ← Zurück
-          </Text>
-        </Pressable>
         <Text
           style={[
             styles.title,

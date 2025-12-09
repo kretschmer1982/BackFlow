@@ -1,5 +1,5 @@
 import { Exercise } from '@/constants/exercises';
-import { getCustomExercises, saveCustomExercise, getSettings } from '@/utils/storage';
+import { getCustomExercises, getSettings, saveCustomExercise } from '@/utils/storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
@@ -74,9 +74,6 @@ export default function CreateExerciseScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Zurück</Text>
-        </Pressable>
         <Text style={styles.title}>Neue Übung</Text>
       </View>
 
