@@ -388,11 +388,6 @@ export default function CreateWorkoutScreen() {
                   />
                   <View style={styles.exerciseInfo}>
                     <Text style={styles.exerciseName}>{item.name}</Text>
-                    <Text style={styles.exerciseType}>
-                      {item.type === 'duration'
-                        ? 'Dauer'
-                        : 'Wiederholungen'}
-                    </Text>
                   </View>
                   <View style={styles.amountInlineContainer}>
                     <Text style={styles.amountInlineLabel}>
@@ -569,16 +564,17 @@ export default function CreateWorkoutScreen() {
               </View>
             </>
           }
+          ListFooterComponent={
+            <View style={styles.footer}>
+              <Pressable style={styles.saveButton} onPress={handleSave}>
+                <Text style={styles.saveButtonText}>
+                  {workoutId ? 'Workout aktualisieren' : 'Workout Speichern'}
+                </Text>
+              </Pressable>
+            </View>
+          }
           contentContainerStyle={styles.scrollContent}
         />
-
-        <View style={styles.footer}>
-          <Pressable style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>
-              {workoutId ? 'Workout aktualisieren' : 'Workout Speichern'}
-            </Text>
-          </Pressable>
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -590,10 +586,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
   },
   header: {
-    padding: 24,
+    paddingHorizontal: 24,
     paddingTop: 40,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    paddingBottom: 16,
+    borderBottomWidth: 0,
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -647,7 +643,8 @@ const styles = StyleSheet.create({
   exerciseHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
   checkboxContainer: {
     marginRight: 16,
@@ -715,9 +712,9 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
   amountInlineInput: {
-    minWidth: 48,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    minWidth: 64,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     borderRadius: 8,
     backgroundColor: '#1a1a1a',
     borderWidth: 1,
@@ -728,9 +725,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#2a2a2a',
-    backgroundColor: '#1a1a1a',
+    borderTopWidth: 0,
   },
   saveButton: {
     backgroundColor: '#4ade80',
@@ -745,8 +740,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   exerciseImage: {
-    width: 48,
-    height: 36,
+    width: 44,
+    height: 32,
     borderRadius: 8,
     marginRight: 14,
     backgroundColor: '#2a2a2a',

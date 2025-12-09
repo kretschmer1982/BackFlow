@@ -14,6 +14,8 @@ export interface BackflowSettings {
   enableReminders: boolean;
   // Ausgewählte Wochentage für Erinnerungen (z.B. 'mon', 'tue', ...)
   reminderDays: string[];
+  // Piepton während des Workouts (Countdown / Phasenwechsel)
+  enableBeep: boolean;
 }
 
 // Standard-Einstellungen
@@ -22,6 +24,7 @@ const DEFAULT_SETTINGS: BackflowSettings = {
   appBackgroundColor: '#000000',
   enableReminders: false,
   reminderDays: [],
+   enableBeep: true,
 };
 
 // Einstellungen laden
@@ -60,6 +63,10 @@ export async function getSettings(): Promise<BackflowSettings> {
             ? migrated.enableReminders
             : DEFAULT_SETTINGS.enableReminders,
         reminderDays: migrated.reminderDays,
+        enableBeep:
+          typeof migrated.enableBeep === 'boolean'
+            ? migrated.enableBeep
+            : DEFAULT_SETTINGS.enableBeep,
       };
 
       // Speichere migrierte Settings zurück

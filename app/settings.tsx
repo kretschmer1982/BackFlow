@@ -1,4 +1,4 @@
-import { getSettings } from '@/utils/storage';
+import { getSettings, updateSettings } from '@/utils/storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
@@ -24,11 +24,15 @@ export default function SettingsScreen() {
   const router = useRouter();
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
   const [enableReminders, setEnableReminders] = useState<boolean>(false);
+  const [enableBeep, setEnableBeep] = useState<boolean>(true);
 
   const loadSettings = useCallback(async () => {
     const settings = await getSettings();
     setBackgroundColor(settings.appBackgroundColor);
     setEnableReminders(settings.enableReminders);
+    setEnableBeep(
+      typeof settings.enableBeep === 'boolean' ? settings.enableBeep : true
+    );
   }, []);
 
   useFocusEffect(
@@ -104,6 +108,40 @@ export default function SettingsScreen() {
                 isLightBackground && styles.reminderStatusOnLight,
               ]}>
               {enableReminders ? 'An' : 'Aus'}
+            </Text>
+          </View>
+        </Pressable>
+
+        <Pressable
+          style={styles.entryRow}
+          onPress={async () => {
+            const next = !enableBeep;
+            setEnableBeep(next);
+            await updateSettings({ enableBeep: next });
+          }}>
+          <View style={styles.entryTextContainer}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                isLightBackground && styles.sectionTitleOnLight,
+              ]}>
+              Signalton beim Training
+            </Text>
+            <Text
+              style={[
+                styles.sectionSubtitle,
+                isLightBackground && styles.sectionSubtitleOnLight,
+              ]}>
+              Piepton bei Countdown und Phasenwechsel ein- oder ausschalten.
+            </Text>
+          </View>
+          <View style={styles.entryRight}>
+            <Text
+              style={[
+                styles.reminderStatus,
+                isLightBackground && styles.reminderStatusOnLight,
+              ]}>
+              {enableBeep ? 'An' : 'Aus'}
             </Text>
           </View>
         </Pressable>

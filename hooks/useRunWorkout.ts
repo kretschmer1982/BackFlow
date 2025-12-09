@@ -42,6 +42,7 @@ export function useRunWorkout({
     useState(GET_READY_DURATION);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [enableBeep, setEnableBeep] = useState(true);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null
@@ -70,17 +71,30 @@ export function useRunWorkout({
     const loadSettings = async () => {
       const settings = await getSettings();
       setBackgroundColor(settings.appBackgroundColor);
+      setEnableBeep(
+        typeof settings.enableBeep === 'boolean' ? settings.enableBeep : true
+      );
     };
     loadSettings();
   }, []);
 
-  // Audio-Modus setzen
+  // Audio-Modus setzen – so, dass kurze Beeps andere Apps möglichst nur "ducken"
   useEffect(() => {
     Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       staysActiveInBackground: false,
+      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DUCK_OTHERS,
+      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DUCK_OTHERS,
+      shouldDuckAndroid: true,
+    }).catch(() => {
+      // Audio-Setup-Fehler ignorieren, damit das Workout trotzdem läuft
     });
   }, []);
+
+  const safePlayBeep = useCallback(async () => {
+    if (!enableBeep) return;
+    await playBeep();
+  }, [enableBeep]);
 
   const getCurrentExercise = useCallback((): WorkoutExercise | null => {
     if (!workout || workout.exercises.length === 0) return null;
@@ -116,7 +130,7 @@ export function useRunWorkout({
       const exercise = getCurrentExercise();
       if (!exercise) return;
 
-      await playBeep();
+      await safePlayBeep();
 
       if (exercise.type === 'duration') {
         setTimeRemaining(exercise.amount);
@@ -126,18 +140,18 @@ export function useRunWorkout({
       }
       setWorkoutState('exercise');
     } else if (workoutState === 'exercise') {
-      await playBeep();
+      await safePlayBeep();
       moveToNextExercise();
     }
-  }, [workoutState, getCurrentExercise, moveToNextExercise]);
+  }, [workoutState, getCurrentExercise, moveToNextExercise, safePlayBeep]);
 
   const handleExerciseComplete = useCallback(async () => {
     const exercise = getCurrentExercise();
     if (exercise && exercise.type === 'reps') {
-      await playBeep();
+      await safePlayBeep();
       moveToNextExercise();
     }
-  }, [getCurrentExercise, moveToNextExercise]);
+  }, [getCurrentExercise, moveToNextExercise, safePlayBeep]);
 
   const handleSkip = useCallback(() => {
     moveToNextExercise();
@@ -159,7 +173,7 @@ export function useRunWorkout({
     if (workoutState === 'getReady') {
       intervalRef.current = setInterval(() => {
         setTimeRemaining((prev) => {
-          if ([3, 2, 1].includes(prev)) playBeep();
+          if ([3, 2, 1].includes(prev) && enableBeep) playBeep();
           if (prev <= 1) {
             handlePhaseComplete();
             return 0;
@@ -170,7 +184,7 @@ export function useRunWorkout({
     } else if (workoutState === 'exercise' && exercise.type === 'duration') {
       intervalRef.current = setInterval(() => {
         setTimeRemaining((prev) => {
-          if ([3, 2, 1].includes(prev)) playBeep();
+          if ([3, 2, 1].includes(prev) && enableBeep) playBeep();
           if (prev <= 1) {
             handlePhaseComplete();
             return 0;
@@ -195,6 +209,7 @@ export function useRunWorkout({
     workoutState,
     getCurrentExercise,
     handlePhaseComplete,
+    enableBeep,
   ]);
 
   // Cleanup beim Unmount
