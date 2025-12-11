@@ -11,6 +11,16 @@ import {
   View,
 } from 'react-native';
 
+function isLightColor(color: string): boolean {
+  const hex = color.replace('#', '');
+  if (hex.length !== 6) return false;
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.7;
+}
+
 interface RunGetReadyViewProps {
   workoutName: string;
   currentExerciseIndex: number;
@@ -32,12 +42,16 @@ export function RunGetReadyView({
   onSkip,
   onCancel,
 }: RunGetReadyViewProps) {
+  const isLightBackground = isLightColor(backgroundColor);
+  const primaryTextColor = isLightBackground ? '#111827' : '#ffffff';
+  const secondaryTextColor = isLightBackground ? '#4b5563' : '#e5e7eb';
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar style="light" />
+      <StatusBar style={isLightBackground ? 'dark' : 'light'} />
       <View style={styles.workoutScreen}>
         <View style={styles.roundInfo}>
-          <Text style={styles.roundText}>
+          <Text style={[styles.roundText, { color: secondaryTextColor }]}>
             {workoutName} • Übung {currentExerciseIndex + 1} /{' '}
             {totalExercises}
           </Text>
@@ -50,19 +64,27 @@ export function RunGetReadyView({
           resizeMode="cover"
         />
         <View style={styles.timerContainer}>
-          <Text style={styles.timerText}>{timeRemaining}</Text>
+          <Text style={[styles.timerText, { color: primaryTextColor }]}>
+            {timeRemaining}
+          </Text>
         </View>
 
         <View style={styles.exerciseDisplay}>
-          <Text style={styles.getReadyText}>GET READY</Text>
-          <Text style={styles.nextExerciseText}>Nächste Übung:</Text>
-          <Text style={styles.nextExerciseName}>{currentExercise.name}</Text>
+          <Text style={[styles.getReadyText, { color: primaryTextColor }]}>
+            GET READY
+          </Text>
+          <Text style={[styles.nextExerciseText, { color: secondaryTextColor }]}>
+            Nächste Übung:
+          </Text>
+          <Text style={[styles.nextExerciseName, { color: primaryTextColor }]}>
+            {currentExercise.name}
+          </Text>
           {currentExercise.type === 'duration' ? (
-            <Text style={styles.nextExerciseInfo}>
+            <Text style={[styles.nextExerciseInfo, { color: secondaryTextColor }]}>
               {currentExercise.amount}s
             </Text>
           ) : (
-            <Text style={styles.nextExerciseInfo}>
+            <Text style={[styles.nextExerciseInfo, { color: secondaryTextColor }]}>
               {currentExercise.amount} x
             </Text>
           )}
@@ -70,7 +92,13 @@ export function RunGetReadyView({
 
         <View style={styles.buttonContainer}>
           <Pressable style={styles.cancelButton} onPress={onCancel}>
-            <Text style={styles.cancelButtonText}>ABBRECHEN</Text>
+            <Text
+              style={[
+                styles.cancelButtonText,
+                { color: primaryTextColor },
+              ]}>
+              ABBRECHEN
+            </Text>
           </Pressable>
           <Pressable style={styles.skipButton} onPress={onSkip}>
             <Text style={styles.skipButtonText}>Skip</Text>

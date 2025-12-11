@@ -12,6 +12,16 @@ import {
   View,
 } from 'react-native';
 
+function isLightColor(color: string): boolean {
+  const hex = color.replace('#', '');
+  if (hex.length !== 6) return false;
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.7;
+}
+
 interface RunExerciseViewProps {
   workoutName: string;
   currentExerciseIndex: number;
@@ -38,6 +48,9 @@ export function RunExerciseView({
   onCancel,
 }: RunExerciseViewProps) {
   const isRepsExercise = currentExercise.type === 'reps';
+  const isLightBackground = isLightColor(backgroundColor);
+  const primaryTextColor = isLightBackground ? '#111827' : '#ffffff';
+  const secondaryTextColor = isLightBackground ? '#4b5563' : '#e5e7eb';
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -49,7 +62,7 @@ export function RunExerciseView({
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar style="light" />
+      <StatusBar style={isLightBackground ? 'dark' : 'light'} />
       <View style={styles.workoutScreen}>
         <TouchableOpacity
           style={styles.touchableArea}
@@ -57,7 +70,7 @@ export function RunExerciseView({
           onPress={isRepsExercise ? onExerciseTap : undefined}
           disabled={!isRepsExercise}>
           <View style={styles.roundInfo}>
-            <Text style={styles.roundText}>
+            <Text style={[styles.roundText, { color: secondaryTextColor }]}>
               {workoutName} • Übung {currentExerciseIndex + 1} /{' '}
               {totalExercises}
             </Text>
@@ -71,35 +84,45 @@ export function RunExerciseView({
           />
           <View style={styles.timerContainer}>
             {isRepsExercise ? (
-              <Text style={styles.repsText}>{currentExercise.amount} x</Text>
+              <Text style={[styles.repsText, { color: primaryTextColor }]}>
+                {currentExercise.amount} x
+              </Text>
             ) : (
-              <Text style={styles.timerText}>
+              <Text style={[styles.timerText, { color: primaryTextColor }]}>
                 {formatTime(timeRemaining)}
               </Text>
             )}
             {isRepsExercise && (
-              <Text style={styles.stopwatchText}>
+              <Text style={[styles.stopwatchText, { color: secondaryTextColor }]}>
                 {formatTime(elapsedTime)}
               </Text>
             )}
           </View>
 
           <View style={styles.exerciseDisplay}>
-            <Text style={styles.currentExerciseText}>
+            <Text style={[styles.currentExerciseText, { color: primaryTextColor }]}>
               {currentExercise.name}
             </Text>
-            <Text style={styles.instructionsText}>
+            <Text style={[styles.instructionsText, { color: secondaryTextColor }]}>
               {currentExercise.instructions}
             </Text>
             {isRepsExercise && (
-              <Text style={styles.tapHint}>Tippe zum Abschließen</Text>
+              <Text style={[styles.tapHint, { color: secondaryTextColor }]}>
+                Tippe zum Abschließen
+              </Text>
             )}
           </View>
         </TouchableOpacity>
 
         <View style={styles.buttonContainer}>
           <Pressable style={styles.cancelButton} onPress={onCancel}>
-            <Text style={styles.cancelButtonText}>ABBRECHEN</Text>
+            <Text
+              style={[
+                styles.cancelButtonText,
+                { color: primaryTextColor },
+              ]}>
+              ABBRECHEN
+            </Text>
           </Pressable>
           <Pressable style={styles.skipButton} onPress={onSkip}>
             <Text style={styles.skipButtonText}>Skip</Text>

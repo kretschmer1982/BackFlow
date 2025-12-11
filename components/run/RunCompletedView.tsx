@@ -3,6 +3,16 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
+function isLightColor(color: string): boolean {
+  const hex = color.replace('#', '');
+  if (hex.length !== 6) return false;
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.7;
+}
+
 interface RunCompletedViewProps {
   workout: Workout;
   backgroundColor: string;
@@ -14,15 +24,26 @@ export function RunCompletedView({
   backgroundColor,
   onGoHome,
 }: RunCompletedViewProps) {
+  const isLightBackground = isLightColor(backgroundColor);
+  const primaryTextColor = isLightBackground ? '#111827' : '#ffffff';
+  const secondaryTextColor = isLightBackground ? '#4b5563' : '#aaaaaa';
+  const accentColor = isLightBackground ? '#16a34a' : '#4ade80';
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar style="light" />
+      <StatusBar style={isLightBackground ? 'dark' : 'light'} />
       <View style={styles.completedScreen}>
         <View style={styles.completedContent}>
           <Text style={styles.completedTitle}>🎉</Text>
-          <Text style={styles.completedText}>Glückwunsch!</Text>
-          <Text style={styles.completedSubtext}>Workout beendet</Text>
-          <Text style={styles.completedWorkoutName}>{workout.name}</Text>
+          <Text style={[styles.completedText, { color: primaryTextColor }]}>
+            Glückwunsch!
+          </Text>
+          <Text style={[styles.completedSubtext, { color: secondaryTextColor }]}>
+            Workout beendet
+          </Text>
+          <Text style={[styles.completedWorkoutName, { color: accentColor }]}>
+            {workout.name}
+          </Text>
         </View>
         <Pressable style={styles.homeButton} onPress={onGoHome}>
           <Text style={styles.homeButtonText}>🏠</Text>
