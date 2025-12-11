@@ -1,50 +1,60 @@
-# Welcome to your Expo app 👋
+## BackFlow – Purpose and Features
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+BackFlow is a small training app for short, structured workouts – focused on back health, posture and everyday‑friendly exercises.
 
-## Get started
+- **Purpose**  
+  - Helps you perform recurring back and mobility exercises consistently.  
+  - Lets you build your own workouts with suitable exercises that fit easily into your daily routine.
 
-1. Install dependencies
+- **Core Features**  
+  - **Create and manage workouts**: Any sequence of exercises with time (seconds) or repetitions.  
+  - **Create custom exercises**: Define name, instructions and optionally an image and reuse them in workouts.  
+  - **Guided workout run**: Get‑ready countdown, clear display of the current exercise, optional beeps in the last 3 seconds.  
+  - **Settings**: Global background color, training reminders and beep sound can be configured.
+
+## Run the project locally (development)
+
+1. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. **Start the development server**
 
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+3. **Test with Expo Go (Android or iOS)**  
+   - Install the **Expo Go** app from the respective store on your phone.  
+   - Scan the **QR code** shown in the terminal or browser devtools.  
+   - The app runs inside Expo Go; code changes are picked up via hot reload.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+> Note: Expo Go is a sandbox container. Some native features (e.g. custom native modules) are limited there, but for this app Expo Go is sufficient for testing.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Install Android APK directly
 
-## Get a fresh project
+Besides testing in Expo Go you can also install BackFlow as a native Android APK.
 
-When you're ready, run:
+- **Build APK with EAS (if you build it yourself)**  
 
-```bash
-npm run reset-project
-```
+  In `eas.json` there is a build profile `apk`. Create an internal APK with:
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+  ```bash
+  npx eas build -p android --profile apk
+  ```
 
-## Learn more
+  After the build finishes you’ll get a link to the EAS build page where you can download the APK.
 
-To learn more about developing your project with Expo, look at the following resources:
+- **Install the APK manually**  
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+  1. Copy the APK to your Android device (download link, USB, AirDrop‑equivalent, …).  
+  2. In **Settings → Security** allow “Install unknown apps / sources” for the used app (browser/file manager).  
+  3. Tap the APK in your file manager and confirm the installation.  
+  4. “BackFlow” will then appear as a normal app on the home screen.
 
-## Join the community
+## Development notes
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- The main app code lives in the `app` directory and uses [Expo Router’s file‑based routing](https://docs.expo.dev/router/introduction).  
+- Tests (E2E with Playwright) are located in the `tests` directory.
