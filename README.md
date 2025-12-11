@@ -37,6 +37,14 @@ BackFlow is a small training app for short, structured workouts – focused on b
 
 Besides testing in Expo Go you can also install BackFlow as a native Android APK.
 
+- **Use the APK included in this repo (quick test on Android)**  
+
+  In this repository you’ll find a ready‑built APK at  
+  `builds/android/application-a2d0667c-a124-447a-bddc-57ea1a54b4aa.apk`.  
+  On GitHub you can download it directly via  
+  `[Download current APK](builds/android/application-a2d0667c-a124-447a-bddc-57ea1a54b4aa.apk)`  
+  and install it on your Android device as described below.
+
 - **Build APK with EAS (if you build it yourself)**  
 
   In `eas.json` there is a build profile `apk`. Create an internal APK with:
