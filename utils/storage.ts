@@ -5,7 +5,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const WORKOUTS_KEY = '@backflow_workouts';
 const CUSTOM_EXERCISES_KEY = '@backflow_custom_exercises';
 const SETTINGS_KEY = '@backflow_settings';
-const INTRO_SEEN_KEY = '@backflow_intro_seen';
 
 // Typ für Einstellungen
 export interface BackflowSettings {
@@ -27,24 +26,6 @@ const DEFAULT_SETTINGS: BackflowSettings = {
   reminderDays: [],
    enableBeep: true,
 };
-
-export async function hasSeenIntro(): Promise<boolean> {
-  try {
-    const value = await AsyncStorage.getItem(INTRO_SEEN_KEY);
-    return value === 'true';
-  } catch (error) {
-    console.error('Fehler beim Prüfen des Intro-Status:', error);
-    return false;
-  }
-}
-
-export async function markIntroSeen(): Promise<void> {
-  try {
-    await AsyncStorage.setItem(INTRO_SEEN_KEY, 'true');
-  } catch (error) {
-    console.error('Fehler beim Setzen des Intro-Status:', error);
-  }
-}
 
 // Einstellungen laden
 export async function getSettings(): Promise<BackflowSettings> {

@@ -1,17 +1,17 @@
 import { Workout } from '@/types/interfaces';
-import { deleteWorkout, getWorkouts, getSettings, hasSeenIntro } from '@/utils/storage';
+import { deleteWorkout, getSettings, getWorkouts } from '@/utils/storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    FlatList,
+    Pressable,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 function parseHexColor(hex: string) {
@@ -59,7 +59,6 @@ export default function HomeScreen() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
-  const [hasCheckedIntro, setHasCheckedIntro] = useState(false);
 
   const loadWorkouts = useCallback(async () => {
     const loadedWorkouts = await getWorkouts();
@@ -73,24 +72,12 @@ export default function HomeScreen() {
     setBackgroundColor(settings.appBackgroundColor);
   }, []);
 
-  // Beim Fokussieren prüfen, ob das Intro bereits gesehen wurde.
-  // Wenn nicht, direkt auf den Info-Screen umleiten.
+  // Lade Workouts beim ersten Mount und wenn Screen fokussiert wird
   useFocusEffect(
     useCallback(() => {
-      const checkIntroAndLoad = async () => {
-        const seenIntro = await hasSeenIntro();
-        if (!seenIntro) {
-          router.replace('/info');
-          return;
-        }
-
-        setHasCheckedIntro(true);
-        await loadWorkouts();
-        await loadSettings();
-      };
-
-      checkIntroAndLoad();
-    }, [router, loadWorkouts, loadSettings])
+      loadWorkouts();
+      loadSettings();
+    }, [loadWorkouts, loadSettings])
   );
 
   const handleWorkoutPress = (workout: Workout) => {
@@ -178,32 +165,18 @@ export default function HomeScreen() {
     );
   };
 
-  if (!hasCheckedIntro) {
-    return null;
-  }
-
-  const { r, g, b } = parseHexColor(backgroundColor);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  const isDarkBackground = luminance < 0.5;
-  const primaryTextColor = isDarkBackground ? '#ffffff' : '#111827';
-  const secondaryTextColor = isDarkBackground ? '#aaaaaa' : '#4b5563';
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar style={isDarkBackground ? 'light' : 'dark'} />
+      <StatusBar style="light" />
       <View style={styles.header}>
-        <Text style={[styles.title, { color: primaryTextColor }]}>BackFlow</Text>
-        <Text style={[styles.subtitle, { color: secondaryTextColor }]}>
-          Deine Workouts
-        </Text>
+        <Text style={styles.title}>BackFlow</Text>
+        <Text style={styles.subtitle}>Deine Workouts</Text>
       </View>
 
       {workouts.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={[styles.emptyStateText, { color: primaryTextColor }]}>
-            Noch keine Workouts
-          </Text>
-          <Text style={[styles.emptyStateSubtext, { color: secondaryTextColor }]}>
+          <Text style={styles.emptyStateText}>Noch keine Workouts</Text>
+          <Text style={styles.emptyStateSubtext}>
             Erstelle dein erstes Workout mit dem + Button
           </Text>
         </View>

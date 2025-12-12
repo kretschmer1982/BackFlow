@@ -1,8 +1,10 @@
-import { GET_READY_DURATION, getImageSource } from '@/constants/exercises';
+import { getImageSource } from '@/constants/exercises';
 import { WorkoutExercise } from '@/types/interfaces';
+import { Video } from 'expo-av';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import {
+  Dimensions,
   Image,
   Pressable,
   SafeAreaView,
@@ -10,16 +12,6 @@ import {
   Text,
   View,
 } from 'react-native';
-
-function isLightColor(color: string): boolean {
-  const hex = color.replace('#', '');
-  if (hex.length !== 6) return false;
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.7;
-}
 
 interface RunGetReadyViewProps {
   workoutName: string;
@@ -42,49 +34,54 @@ export function RunGetReadyView({
   onSkip,
   onCancel,
 }: RunGetReadyViewProps) {
-  const isLightBackground = isLightColor(backgroundColor);
-  const primaryTextColor = isLightBackground ? '#111827' : '#ffffff';
-  const secondaryTextColor = isLightBackground ? '#4b5563' : '#e5e7eb';
-
+  const hasVideo = currentExercise.name === 'Plank';
+  const windowWidth = Dimensions.get('window').width;
+  const contentWidth = windowWidth - 48; // 2 * padding 24 aus workoutScreen
+  const videoSize = contentWidth * 0.8; // quadratisches Video mit 80% der Inhaltsbreite
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar style={isLightBackground ? 'dark' : 'light'} />
+      <StatusBar style="light" />
       <View style={styles.workoutScreen}>
         <View style={styles.roundInfo}>
-          <Text style={[styles.roundText, { color: secondaryTextColor }]}>
+          <Text style={styles.roundText}>
             {workoutName} • Übung {currentExerciseIndex + 1} /{' '}
             {totalExercises}
           </Text>
         </View>
 
-        {/* Übungsbild */}
-        <Image
-          source={getImageSource(currentExercise.name, currentExercise.image)}
-          style={styles.exerciseImage}
-          resizeMode="cover"
-        />
+        {/* Übungsbild oder Video */}
+        {hasVideo ? (
+          <Video
+            source={require('../../assets/videos/plank.mp4')}
+            style={[styles.exerciseVideo, { width: videoSize, height: videoSize }]}
+            resizeMode="cover"
+            isLooping
+            shouldPlay
+            isMuted
+          />
+        ) : (
+          <Image
+            source={getImageSource(currentExercise.name, currentExercise.image)}
+            style={styles.exerciseImage}
+            resizeMode="cover"
+          />
+        )}
         <View style={styles.timerContainer}>
-          <Text style={[styles.timerText, { color: primaryTextColor }]}>
-            {timeRemaining}
-          </Text>
+          <Text style={styles.timerText}>{timeRemaining}</Text>
         </View>
 
         <View style={styles.exerciseDisplay}>
-          <Text style={[styles.getReadyText, { color: primaryTextColor }]}>
+          <Text style={styles.getReadyText} numberOfLines={1} adjustsFontSizeToFit>
             GET READY
           </Text>
-          <Text style={[styles.nextExerciseText, { color: secondaryTextColor }]}>
-            Nächste Übung:
-          </Text>
-          <Text style={[styles.nextExerciseName, { color: primaryTextColor }]}>
-            {currentExercise.name}
-          </Text>
+          <Text style={styles.nextExerciseText}>Nächste Übung:</Text>
+          <Text style={styles.nextExerciseName}>{currentExercise.name}</Text>
           {currentExercise.type === 'duration' ? (
-            <Text style={[styles.nextExerciseInfo, { color: secondaryTextColor }]}>
+            <Text style={styles.nextExerciseInfo}>
               {currentExercise.amount}s
             </Text>
           ) : (
-            <Text style={[styles.nextExerciseInfo, { color: secondaryTextColor }]}>
+            <Text style={styles.nextExerciseInfo}>
               {currentExercise.amount} x
             </Text>
           )}
@@ -92,13 +89,7 @@ export function RunGetReadyView({
 
         <View style={styles.buttonContainer}>
           <Pressable style={styles.cancelButton} onPress={onCancel}>
-            <Text
-              style={[
-                styles.cancelButtonText,
-                { color: primaryTextColor },
-              ]}>
-              ABBRECHEN
-            </Text>
+            <Text style={styles.cancelButtonText}>ABBRECHEN</Text>
           </Pressable>
           <Pressable style={styles.skipButton} onPress={onSkip}>
             <Text style={styles.skipButtonText}>Skip</Text>
@@ -145,12 +136,12 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   getReadyText: {
-    fontSize: 64,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#ffffff',
     textAlign: 'center',
-    marginBottom: 24,
-    letterSpacing: 4,
+    marginBottom: 12,
+    letterSpacing: 2,
   },
   nextExerciseText: {
     fontSize: 20,
@@ -217,6 +208,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#2a2a2a',
     alignSelf: 'center',
     overflow: 'hidden',
+  },
+  exerciseVideo: {
+    marginTop: 24,
+    marginBottom: 24,
+    backgroundColor: 'transparent',
+    alignSelf: 'center',
   },
 });
 

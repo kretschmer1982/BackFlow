@@ -1,68 +1,50 @@
-## BackFlow – Purpose and Features
+# Welcome to your Expo app 👋
 
-BackFlow is a small training app for short, structured workouts – focused on back health, posture and everyday‑friendly exercises.
+This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
-- **Purpose**  
-  - Helps you perform recurring back and mobility exercises consistently.  
-  - Lets you build your own workouts with suitable exercises that fit easily into your daily routine.
+## Get started
 
-- **Core Features**  
-  - **Create and manage workouts**: Any sequence of exercises with time (seconds) or repetitions.  
-  - **Create custom exercises**: Define name, instructions and optionally an image and reuse them in workouts.  
-  - **Guided workout run**: Get‑ready countdown, clear display of the current exercise, optional beeps in the last 3 seconds.  
-  - **Settings**: Global background color, training reminders and beep sound can be configured.
-
-## Run the project locally (development)
-
-1. **Install dependencies**
+1. Install dependencies
 
    ```bash
    npm install
    ```
 
-2. **Start the development server**
+2. Start the app
 
    ```bash
    npx expo start
    ```
 
-3. **Test with Expo Go (Android or iOS)**  
-   - Install the **Expo Go** app from the respective store on your phone.  
-   - Scan the **QR code** shown in the terminal or browser devtools.  
-   - The app runs inside Expo Go; code changes are picked up via hot reload.
+In the output, you'll find options to open the app in a
 
-> Note: Expo Go is a sandbox container. Some native features (e.g. custom native modules) are limited there, but for this app Expo Go is sufficient for testing.
+- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
+- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
+- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-## Install Android APK directly
+You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-Besides testing in Expo Go you can also install BackFlow as a native Android APK.
+## Get a fresh project
 
-- **Use the APK included in this repo (quick test on Android)**  
+When you're ready, run:
 
-  In this repository you’ll find a ready‑built APK at  
-  `builds/android/application-a2d0667c-a124-447a-bddc-57ea1a54b4aa.apk`.  
-  On GitHub you can download it directly via  
-  `[Download current APK](builds/android/application-a2d0667c-a124-447a-bddc-57ea1a54b4aa.apk)`  
-  and install it on your Android device as described below.
+```bash
+npm run reset-project
+```
 
-- **Build APK with EAS (if you build it yourself)**  
+This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
-  In `eas.json` there is a build profile `apk`. Create an internal APK with:
+## Learn more
 
-  ```bash
-  npx eas build -p android --profile apk
-  ```
+To learn more about developing your project with Expo, look at the following resources:
 
-  After the build finishes you’ll get a link to the EAS build page where you can download the APK.
+- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
+- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-- **Install the APK manually**  
+## Join the community
 
-  1. Copy the APK to your Android device (download link, USB, AirDrop‑equivalent, …).  
-  2. In **Settings → Security** allow “Install unknown apps / sources” for the used app (browser/file manager).  
-  3. Tap the APK in your file manager and confirm the installation.  
-  4. “BackFlow” will then appear as a normal app on the home screen.
+Join our community of developers creating universal apps.
 
-## Development notes
-
-- The main app code lives in the `app` directory and uses [Expo Router’s file‑based routing](https://docs.expo.dev/router/introduction).  
-- Tests (E2E with Playwright) are located in the `tests` directory.
+- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
+- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.

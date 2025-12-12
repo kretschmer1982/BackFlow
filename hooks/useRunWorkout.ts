@@ -1,6 +1,6 @@
 import { GET_READY_DURATION } from '@/constants/exercises';
 import { Workout, WorkoutExercise } from '@/types/interfaces';
-import { playBeep, preloadBeep } from '@/utils/sound';
+import { playBeep } from '@/utils/sound';
 import { getSettings, getWorkoutById } from '@/utils/storage';
 import { Audio } from 'expo-av';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -74,13 +74,6 @@ export function useRunWorkout({
       setEnableBeep(
         typeof settings.enableBeep === 'boolean' ? settings.enableBeep : true
       );
-
-      // Beep-Sound frühzeitig laden, damit der Countdown möglichst synchron klingt
-      if (settings.enableBeep) {
-        await preloadBeep().catch(() => {
-          // Fehler beim Vorladen ignorieren
-        });
-      }
     };
     loadSettings();
   }, []);
@@ -137,6 +130,8 @@ export function useRunWorkout({
       const exercise = getCurrentExercise();
       if (!exercise) return;
 
+      await safePlayBeep();
+
       if (exercise.type === 'duration') {
         setTimeRemaining(exercise.amount);
       } else {
@@ -145,6 +140,7 @@ export function useRunWorkout({
       }
       setWorkoutState('exercise');
     } else if (workoutState === 'exercise') {
+      await safePlayBeep();
       moveToNextExercise();
     }
   }, [workoutState, getCurrentExercise, moveToNextExercise, safePlayBeep]);
@@ -177,11 +173,7 @@ export function useRunWorkout({
     if (workoutState === 'getReady') {
       intervalRef.current = setInterval(() => {
         setTimeRemaining((prev) => {
-          if ([3, 2, 1].includes(prev) && enableBeep) {
-            // Drei kurze Beeps bei den letzten drei Sekunden,
-            // ohne zusätzlichen Ton exakt beim Phasenwechsel.
-            safePlayBeep();
-          }
+          if ([3, 2, 1].includes(prev) && enableBeep) playBeep();
           if (prev <= 1) {
             handlePhaseComplete();
             return 0;
@@ -192,9 +184,7 @@ export function useRunWorkout({
     } else if (workoutState === 'exercise' && exercise.type === 'duration') {
       intervalRef.current = setInterval(() => {
         setTimeRemaining((prev) => {
-          if ([3, 2, 1].includes(prev) && enableBeep) {
-            safePlayBeep();
-          }
+          if ([3, 2, 1].includes(prev) && enableBeep) playBeep();
           if (prev <= 1) {
             handlePhaseComplete();
             return 0;
@@ -220,7 +210,6 @@ export function useRunWorkout({
     getCurrentExercise,
     handlePhaseComplete,
     enableBeep,
-    safePlayBeep,
   ]);
 
   // Cleanup beim Unmount

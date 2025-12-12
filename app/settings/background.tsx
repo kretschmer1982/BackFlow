@@ -11,32 +11,33 @@ import {
     View
 } from 'react-native';
 
-// Reduzierte Farbpalette für die App-Hintergründe
-// Dunkle Hintergründe
-// - Schwarz
-// - Sehr dunkles Grau
-// - Mittelgrau
-// - Dunkelbraun
-// - Dunkles Lila
-// - Dunkelrot
-// Helle Hintergründe
-// - Weiß
-// - Helles Grau
-// - Heller Sandton
-// - Sehr helles Lila
-// - Helles Rosa
+// 25 gängige Farben (dunkel, grau, hell + Akzentfarben)
 const COLOR_PALETTE: string[] = [
-  '#000000', // schwarz
-  '#111827', // sehr dunkles grau (Tailwind gray-900)
-  '#4b5563', // grau (Tailwind gray-600)
-  '#3f2a1b', // dunkelbraun
-  '#4c1d95', // dunkel lila
-  '#7f1d1d', // dunkelrot
-  '#ffffff', // weiß
-  '#e5e7eb', // helles grau
-  '#f5e7d3', // hell sandfarben
-  '#f3e8ff', // sehr helles lila
-  '#fee2e2', // helles rosa
+  '#000000',
+  '#111827',
+  '#1f2937',
+  '#374151',
+  '#4b5563',
+  '#6b7280',
+  '#9ca3af',
+  '#ffffff',
+  '#f9fafb',
+  '#e5e7eb',
+  '#ef4444',
+  '#f97316',
+  '#facc15',
+  '#22c55e',
+  '#10b981',
+  '#06b6d4',
+  '#0ea5e9',
+  '#3b82f6',
+  '#6366f1',
+  '#8b5cf6',
+  '#a855f7',
+  '#ec4899',
+  '#f43f5e',
+  '#14532d',
+  '#1e3a8a',
 ];
 
 function isLightColor(color: string): boolean {
