@@ -8,7 +8,7 @@ import {
 } from '@/utils/storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Image,
     KeyboardAvoidingView,
@@ -26,10 +26,29 @@ import DraggableFlatList, {
     RenderItemParams,
 } from 'react-native-draggable-flatlist';
 
+function parseHexColor(hex: string) {
+  const sanitized = hex.replace('#', '');
+  if (sanitized.length !== 6) {
+    return { r: 0, g: 0, b: 0 };
+  }
+  const r = parseInt(sanitized.slice(0, 2), 16);
+  const g = parseInt(sanitized.slice(2, 4), 16);
+  const b = parseInt(sanitized.slice(4, 6), 16);
+  return { r, g, b };
+}
+
+function isDarkColor(hex: string) {
+  const { r, g, b } = parseHexColor(hex);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
+
 export default function CreateWorkoutScreen() {
   const router = useRouter();
   const { workoutId } = useLocalSearchParams<{ workoutId?: string }>();
+  const titleInputRef = useRef<TextInput | null>(null);
   const [workoutName, setWorkoutName] = useState('');
+  const [isTitleEditable, setIsTitleEditable] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
   const [selectedExercises, setSelectedExercises] =
     useState<WorkoutExercise[]>([]);
@@ -38,6 +57,10 @@ export default function CreateWorkoutScreen() {
   const [exerciseAmountInputs, setExerciseAmountInputs] =
     useState<Map<string, string>>(new Map());
   const [infoExercise, setInfoExercise] = useState<Exercise | null>(null);
+  const isDarkBackground = useMemo(
+    () => isDarkColor(backgroundColor),
+    [backgroundColor]
+  );
 
   const createExerciseInstance = (exercise: Exercise): WorkoutExercise => ({
     ...exercise,
@@ -189,14 +212,47 @@ export default function CreateWorkoutScreen() {
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <TextInput
-            style={styles.titleInput}
+            ref={titleInputRef}
+            style={[
+              styles.titleInput,
+              isTitleEditable &&
+                (isDarkBackground
+                  ? styles.titleInputEditingDark
+                  : styles.titleInputEditingLight),
+            ]}
             value={workoutName}
             onChangeText={setWorkoutName}
+            editable={isTitleEditable}
+            onBlur={() => setIsTitleEditable(false)}
             placeholder={workoutId ? 'Workoutname' : 'Neues Workout'}
             placeholderTextColor="#666666"
             testID="create-workout-title-input"
           />
-          <Text style={styles.titleEditIcon}>✎</Text>
+          <Pressable
+            style={styles.titleEditButton}
+            onPress={() => {
+              if (!isTitleEditable) {
+                setIsTitleEditable(true);
+                // Kurzen Delay, damit editable-State sicher aktiv ist,
+                // bevor der Fokus gesetzt wird (sorgt auch fürs Tastatur-Öffnen).
+                setTimeout(() => {
+                  titleInputRef.current?.focus();
+                }, 0);
+              } else {
+                // Bearbeitung bestätigen
+                setIsTitleEditable(false);
+                titleInputRef.current?.blur();
+              }
+            }}>
+            <Text
+              style={
+                isTitleEditable
+                  ? styles.titleConfirmIcon
+                  : styles.titleEditIcon
+              }>
+              {isTitleEditable ? '✓' : '✎'}
+            </Text>
+          </Pressable>
         </View>
       </View>
 
@@ -331,11 +387,13 @@ export default function CreateWorkoutScreen() {
               ListFooterComponent={
                 <View style={styles.footer}>
                   <Pressable
-                    style={styles.saveButton}
+                    style={[styles.exerciseCard, styles.saveCard]}
                     onPress={handleSave}
                     testID="create-save-workout-button">
                     <Text style={styles.saveButtonText}>
-                      {workoutId ? 'Workout aktualisieren' : 'Workout Speichern'}
+                      {workoutId
+                        ? 'Workout aktualisieren'
+                        : 'Workout Speichern'}
                     </Text>
                   </Pressable>
                 </View>
@@ -410,9 +468,30 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
   },
+  titleInputEditingDark: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+  },
+  titleInputEditingLight: {
+    backgroundColor: 'rgba(0,0,0,0.07)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+  },
+  titleEditButton: {
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   titleEditIcon: {
-    fontSize: 20,
+    fontSize: 26,
     color: '#4ade80',
+  },
+  titleConfirmIcon: {
+    fontSize: 26,
+    color: '#4ade80',
+    fontWeight: '700',
   },
   scrollView: {
     flex: 1,
@@ -559,20 +638,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   footer: {
-    padding: 24,
+    paddingHorizontal: 0,
+    paddingVertical: 16,
     borderTopWidth: 0,
   },
-  saveButton: {
+  saveCard: {
     backgroundColor: '#4ade80',
-    borderRadius: 12,
-    padding: 18,
+    borderColor: '#4ade80',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   saveButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#1a1a1a',
-    letterSpacing: 1,
+    textAlign: 'center',
   },
   exerciseImage: {
     width: 44,
@@ -590,14 +670,18 @@ const styles = StyleSheet.create({
   },
   addExerciseButton: {
     backgroundColor: '#4ade80',
-    paddingVertical: 8,
+    height: 56,
     paddingHorizontal: 16,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
   },
   addExerciseButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1a1a1a',
+    textAlign: 'center',
   },
   newExerciseCard: {
     backgroundColor: '#2a2a2a',

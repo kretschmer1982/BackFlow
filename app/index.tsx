@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
     marginLeft: 12,
   },
   editButton: {
@@ -289,10 +289,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   editButtonText: {
-    fontSize: 18,
+    fontSize: 27,
     color: '#4ade80',
     fontWeight: 'bold',
-    lineHeight: 20,
+    lineHeight: 29,
   },
   deleteButton: {
     width: 36,
@@ -303,10 +303,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   deleteButtonText: {
-    fontSize: 24,
+    fontSize: 36,
     color: '#ff4444',
     fontWeight: 'bold',
-    lineHeight: 24,
+    lineHeight: 38,
   },
   emptyState: {
     flex: 1,
