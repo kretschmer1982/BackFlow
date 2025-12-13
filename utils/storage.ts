@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const WORKOUTS_KEY = '@backflow_workouts';
 const CUSTOM_EXERCISES_KEY = '@backflow_custom_exercises';
 const SETTINGS_KEY = '@backflow_settings';
+const PLANNED_WORKOUTS_KEY = '@backflow_planned_workouts';
+const PLANNER_SETTINGS_KEY = '@backflow_planner_settings';
 
 // Typ für Einstellungen
 export interface BackflowSettings {
@@ -25,6 +27,20 @@ const DEFAULT_SETTINGS: BackflowSettings = {
   enableReminders: false,
   reminderDays: [],
    enableBeep: true,
+};
+
+// Planner Types
+export interface PlannedWorkoutsMap {
+  [date: string]: string; // YYYY-MM-DD -> workoutId
+}
+
+export interface PlannerSettings {
+  // 0=Sun, 1=Mon, ..., 6=Sat
+  defaultSchedule: { [day: number]: string | null };
+}
+
+const DEFAULT_PLANNER_SETTINGS: PlannerSettings = {
+  defaultSchedule: { 0: null, 1: null, 2: null, 3: null, 4: null, 5: null, 6: null },
 };
 
 // Einstellungen laden
@@ -206,3 +222,65 @@ export async function deleteCustomExercise(name: string): Promise<boolean> {
   }
 }
 
+// --- Planner Storage ---
+
+export async function getPlannerSettings(): Promise<PlannerSettings> {
+  try {
+    const jsonValue = await AsyncStorage.getItem(PLANNER_SETTINGS_KEY);
+    if (jsonValue != null) {
+      return { ...DEFAULT_PLANNER_SETTINGS, ...JSON.parse(jsonValue) };
+    }
+    return DEFAULT_PLANNER_SETTINGS;
+  } catch (error) {
+    console.error('Fehler beim Laden der Planner Einstellungen:', error);
+    return DEFAULT_PLANNER_SETTINGS;
+  }
+}
+
+export async function updatePlannerSettings(
+  partialSettings: Partial<PlannerSettings>
+): Promise<PlannerSettings | null> {
+  try {
+    const current = await getPlannerSettings();
+    const updated = { ...current, ...partialSettings };
+    await AsyncStorage.setItem(PLANNER_SETTINGS_KEY, JSON.stringify(updated));
+    return updated;
+  } catch (error) {
+    console.error('Fehler beim Speichern der Planner Einstellungen:', error);
+    return null;
+  }
+}
+
+export async function getPlannedWorkouts(): Promise<PlannedWorkoutsMap> {
+  try {
+    const jsonValue = await AsyncStorage.getItem(PLANNED_WORKOUTS_KEY);
+    return jsonValue != null ? JSON.parse(jsonValue) : {};
+  } catch (error) {
+    console.error('Fehler beim Laden der geplanten Workouts:', error);
+    return {};
+  }
+}
+
+export async function savePlannedWorkout(date: string, workoutId: string): Promise<boolean> {
+  try {
+    const planned = await getPlannedWorkouts();
+    planned[date] = workoutId;
+    await AsyncStorage.setItem(PLANNED_WORKOUTS_KEY, JSON.stringify(planned));
+    return true;
+  } catch (error) {
+    console.error('Fehler beim Speichern des geplanten Workouts:', error);
+    return false;
+  }
+}
+
+export async function deletePlannedWorkout(date: string): Promise<boolean> {
+  try {
+    const planned = await getPlannedWorkouts();
+    delete planned[date];
+    await AsyncStorage.setItem(PLANNED_WORKOUTS_KEY, JSON.stringify(planned));
+    return true;
+  } catch (error) {
+    console.error('Fehler beim Löschen des geplanten Workouts:', error);
+    return false;
+  }
+}
