@@ -11,6 +11,9 @@ export interface Exercise {
 }
 
 // Übungen für das BackFlow Workout
+// Hinweis: Diese Liste enthält sowohl das ursprüngliche Kern-Set
+// als auch zusätzliche Übungen, damit du direkt ca. 15+ sinnvolle
+// Standard-Übungen zur Auswahl hast.
 export const EXERCISES: Exercise[] = [
   {
     name: 'Plank',
@@ -44,23 +47,89 @@ export const EXERCISES: Exercise[] = [
     name: 'Cat-Cow',
     type: 'duration',
     amount: 40,
-    instructions: 'Vierfüßlerstand, Wirbelsäule abwechselnd krümmen und strecken',
+    instructions:
+      'Vierfüßlerstand, Wirbelsäule abwechselnd krümmen (Cat) und strecken (Cow)',
     image: 'https://placehold.co/600x400/png?text=Cat-Cow',
   },
   {
     name: 'Sit-Ups',
     type: 'reps',
     amount: 30,
-    instructions: 'Rückenlage, Oberkörper aufrichten',
+    instructions: 'Rückenlage, Füße aufstellen, Oberkörper kontrolliert aufrollen',
     image: 'https://placehold.co/600x400/png?text=Sit-Ups',
   },
-  // Platzhalter für weitere Übungen - kann später ergänzt werden
-  // {
-  //   name: 'Dead Bug',
-  //   type: 'duration',
-  //   amount: 40,
-  //   instructions: '...',
-  // },
+  {
+    name: 'Side Plank links',
+    type: 'duration',
+    amount: 30,
+    instructions:
+      'Seitstütz auf dem linken Unterarm, Körper in einer Linie halten',
+    image: 'https://placehold.co/600x400/png?text=Side+Plank+L',
+  },
+  {
+    name: 'Side Plank rechts',
+    type: 'duration',
+    amount: 30,
+    instructions:
+      'Seitstütz auf dem rechten Unterarm, Körper in einer Linie halten',
+    image: 'https://placehold.co/600x400/png?text=Side+Plank+R',
+  },
+  {
+    name: 'Reverse Plank',
+    type: 'duration',
+    amount: 30,
+    instructions:
+      'Rückenlage, auf Hände/Unterarme stützen und Hüfte anheben, Körper bildet eine Linie',
+    image: 'https://placehold.co/600x400/png?text=Reverse+Plank',
+  },
+  {
+    name: 'Dead Bug',
+    type: 'duration',
+    amount: 40,
+    instructions:
+      'Rückenlage, Arme nach oben, Beine 90°, diagonal Arm und Bein langsam senken',
+    image: 'https://placehold.co/600x400/png?text=Dead+Bug',
+  },
+  {
+    name: 'Knie zur Brust',
+    type: 'duration',
+    amount: 40,
+    instructions:
+      'Rückenlage, abwechselnd ein Knie zur Brust ziehen, Lendenwirbelsäule am Boden halten',
+    image: 'https://placehold.co/600x400/png?text=Knie+zur+Brust',
+  },
+  {
+    name: 'Childs Pose',
+    type: 'duration',
+    amount: 40,
+    instructions:
+      'Aus dem Fersensitz Oberkörper nach vorne sinken lassen, Arme lang nach vorn strecken',
+    image: 'https://placehold.co/600x400/png?text=Childs+Pose',
+  },
+  {
+    name: 'Rumpfrotation im Sitz',
+    type: 'duration',
+    amount: 40,
+    instructions:
+      'Aufrecht sitzen, Hände vor der Brust, Oberkörper langsam von Seite zu Seite rotieren',
+    image: 'https://placehold.co/600x400/png?text=Rotation',
+  },
+  {
+    name: 'Hip Hinge',
+    type: 'reps',
+    amount: 15,
+    instructions:
+      'Hüftbeuge in aufrechter Position: Gesäß nach hinten schieben, Rücken bleibt gerade',
+    image: 'https://placehold.co/600x400/png?text=Hip+Hinge',
+  },
+  {
+    name: 'Wall Sit',
+    type: 'duration',
+    amount: 30,
+    instructions:
+      'Mit dem Rücken an die Wand gelehnt in Sitzposition (90° Knie) halten, Rumpf aktiv',
+    image: 'https://placehold.co/600x400/png?text=Wall+Sit',
+  },
 ];
 
 // Mapping von Übungsnamen zu Bildern (für lokale Bilder)
