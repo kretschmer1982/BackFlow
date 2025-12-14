@@ -23,13 +23,11 @@ function isLightColor(color: string): boolean {
 export default function SettingsScreen() {
   const router = useRouter();
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
-  const [enableReminders, setEnableReminders] = useState<boolean>(false);
   const [enableBeep, setEnableBeep] = useState<boolean>(true);
 
   const loadSettings = useCallback(async () => {
     const settings = await getSettings();
     setBackgroundColor(settings.appBackgroundColor);
-    setEnableReminders(settings.enableReminders);
     setEnableBeep(
       typeof settings.enableBeep === 'boolean' ? settings.enableBeep : true
     );
@@ -79,36 +77,6 @@ export default function SettingsScreen() {
           </View>
           <View style={styles.entryRight}>
             <View style={[styles.previewDot, { backgroundColor }]} />
-          </View>
-        </Pressable>
-
-        <Pressable
-          style={styles.entryRow}
-          onPress={() => router.push('/settings/reminders')}>
-          <View style={styles.entryTextContainer}>
-            <Text
-              style={[
-                styles.sectionTitle,
-                isLightBackground && styles.sectionTitleOnLight,
-              ]}>
-              Erinnerungen
-            </Text>
-            <Text
-              style={[
-                styles.sectionSubtitle,
-                isLightBackground && styles.sectionSubtitleOnLight,
-              ]}>
-              Benachrichtigungen für dein Training konfigurieren.
-            </Text>
-          </View>
-          <View style={styles.entryRight}>
-            <Text
-              style={[
-                styles.reminderStatus,
-                isLightBackground && styles.reminderStatusOnLight,
-              ]}>
-              {enableReminders ? 'An' : 'Aus'}
-            </Text>
           </View>
         </Pressable>
 

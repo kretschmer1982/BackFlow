@@ -8,14 +8,16 @@ const SETTINGS_KEY = '@backflow_settings';
 const PLANNED_WORKOUTS_KEY = '@backflow_planned_workouts';
 const PLANNER_SETTINGS_KEY = '@backflow_planner_settings';
 
+export type TrainingReminderTimeOfDay = 'morning' | 'noon' | 'evening';
+
 // Typ für Einstellungen
 export interface BackflowSettings {
   // Globale Hintergrundfarbe für die gesamte App
   appBackgroundColor: string;
-  // Trainings-Erinnerungen
-  enableReminders: boolean;
-  // Ausgewählte Wochentage für Erinnerungen (z.B. 'mon', 'tue', ...)
-  reminderDays: string[];
+  // Trainings-Erinnerungen (Planner)
+  trainingReminderEnabled: boolean;
+  // Zeitpunkt der Erinnerung
+  trainingReminderTimeOfDay: TrainingReminderTimeOfDay;
   // Piepton während des Workouts (Countdown / Phasenwechsel)
   enableBeep: boolean;
 }
@@ -24,9 +26,9 @@ export interface BackflowSettings {
 const DEFAULT_SETTINGS: BackflowSettings = {
   // Standard: komplett dunkel/schwarz
   appBackgroundColor: '#000000',
-  enableReminders: false,
-  reminderDays: [],
-   enableBeep: true,
+  trainingReminderEnabled: false,
+  trainingReminderTimeOfDay: 'morning',
+  enableBeep: true,
 };
 
 // Planner Types
@@ -67,18 +69,29 @@ export async function getSettings(): Promise<BackflowSettings> {
         delete migrated.exerciseBackgroundColor;
       }
 
-      // ReminderDays immer als Array sicherstellen
-      if (!Array.isArray(migrated.reminderDays)) {
-        migrated.reminderDays = [];
+      // Migration: alte Reminder Settings -> neue Planner Reminder Settings
+      if (typeof migrated.enableReminders === 'boolean' && typeof migrated.trainingReminderEnabled !== 'boolean') {
+        migrated.trainingReminderEnabled = migrated.enableReminders;
       }
+      if (
+        migrated.trainingReminderTimeOfDay !== 'morning' &&
+        migrated.trainingReminderTimeOfDay !== 'noon' &&
+        migrated.trainingReminderTimeOfDay !== 'evening'
+      ) {
+        migrated.trainingReminderTimeOfDay = DEFAULT_SETTINGS.trainingReminderTimeOfDay;
+      }
+
+      // alte Reminder-Properties entfernen
+      if (migrated.enableReminders !== undefined) delete migrated.enableReminders;
+      if (migrated.reminderDays !== undefined) delete migrated.reminderDays;
 
       const settings: BackflowSettings = {
         appBackgroundColor: migrated.appBackgroundColor || DEFAULT_SETTINGS.appBackgroundColor,
-        enableReminders:
-          typeof migrated.enableReminders === 'boolean'
-            ? migrated.enableReminders
-            : DEFAULT_SETTINGS.enableReminders,
-        reminderDays: migrated.reminderDays,
+        trainingReminderEnabled:
+          typeof migrated.trainingReminderEnabled === 'boolean'
+            ? migrated.trainingReminderEnabled
+            : DEFAULT_SETTINGS.trainingReminderEnabled,
+        trainingReminderTimeOfDay: migrated.trainingReminderTimeOfDay,
         enableBeep:
           typeof migrated.enableBeep === 'boolean'
             ? migrated.enableBeep

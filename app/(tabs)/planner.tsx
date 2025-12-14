@@ -1,5 +1,6 @@
 import PlannerSettingsModal from '@/components/PlannerSettingsModal';
 import { Workout } from '@/types/interfaces';
+import { rescheduleTrainingReminders } from '@/utils/notifications';
 import {
     PlannerSettings,
     getPlannedWorkouts,
@@ -22,6 +23,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const formatDateRange = (date: Date) => {
   return date.toLocaleDateString('de-DE', {
@@ -47,6 +49,7 @@ export default function PlannerScreen() {
   const [currentStartDate, setCurrentStartDate] = useState(new Date());
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const insets = useSafeAreaInsets();
 
   const [plannedWorkouts, setPlannedWorkouts] = useState<{ [date: string]: string }>({});
   const [plannerSettings, setPlannerSettings] = useState<PlannerSettings>({ defaultSchedule: {} });
@@ -161,6 +164,7 @@ export default function PlannerScreen() {
     await savePlannedWorkout(toKey, dayMoveWorkoutId);
 
     await loadData();
+    await rescheduleTrainingReminders();
     closeDayPicker();
   };
 
@@ -185,6 +189,7 @@ export default function PlannerScreen() {
           onPress: async () => {
             await savePlannedWorkout(toDateKey(date), '');
             await loadData();
+            await rescheduleTrainingReminders();
           },
         },
       ]);
@@ -199,6 +204,7 @@ export default function PlannerScreen() {
       const dateKey = toDateKey(selectedDateForPicker);
       await savePlannedWorkout(dateKey, workout.id);
       await loadData();
+      await rescheduleTrainingReminders();
     }
     setWorkoutPickerVisible(false);
     setSelectedDateForPicker(null);
@@ -206,18 +212,21 @@ export default function PlannerScreen() {
 
   const renderCalendarRow = ({ item }: { item: Date }) => {
     const workout = getWorkoutForDate(item);
+    const isToday = toDateKey(item) === toDateKey(new Date());
 
     return (
-      <View style={styles.dayItem}>
-        <View style={styles.dateContainer}>
-          <Text style={styles.dayName}>{item.toLocaleDateString('de-DE', { weekday: 'short' })}</Text>
-          <Text style={styles.dateText}>
+      <View style={[styles.dayItem, isToday && styles.dayItemToday]}>
+        <View style={[styles.dateContainer, isToday && styles.dateContainerToday]}>
+          <Text style={[styles.dayName, isToday && styles.dayNameToday]}>
+            {item.toLocaleDateString('de-DE', { weekday: 'short' })}
+          </Text>
+          <Text style={[styles.dateText, isToday && styles.dateTextToday]}>
             {item.getDate()}.{item.getMonth() + 1}.
           </Text>
         </View>
 
         <TouchableOpacity
-          style={styles.planContainer}
+          style={[styles.planContainer, isToday && styles.planContainerToday]}
           onPress={() => handleDayPress(item)}
           activeOpacity={0.8}>
           {workout ? (
@@ -238,15 +247,7 @@ export default function PlannerScreen() {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <View style={styles.headerTopRow}>
-          <Text style={styles.subtitle}>Planner</Text>
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => setSettingsModalVisible(true)}
-            activeOpacity={0.8}>
-            <Text style={styles.settingsButtonText}>⚙</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.subtitle}>Planner</Text>
       </View>
 
       <View style={styles.navBar}>
@@ -274,6 +275,25 @@ export default function PlannerScreen() {
         renderItem={renderCalendarRow}
         contentContainerStyle={styles.listContent}
       />
+
+      {/* Settings-FAB unten rechts (über TabBar) */}
+      <View
+        pointerEvents="box-none"
+        style={[
+          styles.fabContainer,
+          {
+            right: 20,
+            // leicht über/auf der TabBar (über dem rechten Planner-Tab)
+            bottom: 12 + insets.bottom,
+          },
+        ]}>
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => setSettingsModalVisible(true)}
+          activeOpacity={0.85}>
+          <Text style={styles.fabText}>⚙</Text>
+        </TouchableOpacity>
+      </View>
 
       <PlannerSettingsModal
         visible={settingsModalVisible}
@@ -414,7 +434,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 24,
-    paddingBottom: 100,
+    paddingBottom: 160,
   },
   dayItem: {
     flexDirection: 'row',
@@ -448,6 +468,24 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
   },
+  dayItemToday: {},
+  dateContainerToday: {
+    backgroundColor: 'rgba(74, 222, 128, 0.12)',
+    borderRadius: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.35)',
+  },
+  dayNameToday: {
+    color: '#4ade80',
+  },
+  dateTextToday: {
+    color: '#4ade80',
+  },
+  planContainerToday: {
+    borderColor: 'rgba(74, 222, 128, 0.55)',
+    backgroundColor: '#161a16',
+  },
   workoutName: {
     color: '#ffffff',
     fontSize: 16,
@@ -462,17 +500,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
   },
-  settingsButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
+  fabContainer: {
+    position: 'absolute',
+    zIndex: 50,
+    elevation: 50,
+  },
+  fab: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: '#3a3a3a',
     borderWidth: 1,
     borderColor: '#555555',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  settingsButtonText: {
-    fontSize: 20,
-    fontWeight: '600',
+  fabText: {
+    fontSize: 28,
+    fontWeight: '700',
     color: '#ffffff',
   },
   pickerOverlay: {
