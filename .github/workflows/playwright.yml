@@ -1,11 +1,11 @@
-name: Playwright Tests
+name: Playwright Tests (disabled)
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  # Tests sind aktuell auf GitHub deaktiviert.
+  # (Selbst bei manuellem Start wird der Job NICHT ausgeführt.)
+  workflow_dispatch:
 jobs:
   test:
+    if: false
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
