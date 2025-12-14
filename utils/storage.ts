@@ -241,7 +241,20 @@ export async function getPlannerSettings(): Promise<PlannerSettings> {
   try {
     const jsonValue = await AsyncStorage.getItem(PLANNER_SETTINGS_KEY);
     if (jsonValue != null) {
-      return { ...DEFAULT_PLANNER_SETTINGS, ...JSON.parse(jsonValue) };
+      const parsed = JSON.parse(jsonValue);
+      const mergedDefaultSchedule = {
+        ...DEFAULT_PLANNER_SETTINGS.defaultSchedule,
+        ...(parsed?.defaultSchedule || {}),
+      };
+      // Ensure all days exist (0..6)
+      for (let d = 0; d <= 6; d++) {
+        if (mergedDefaultSchedule[d] === undefined) mergedDefaultSchedule[d] = null;
+      }
+      return {
+        ...DEFAULT_PLANNER_SETTINGS,
+        ...parsed,
+        defaultSchedule: mergedDefaultSchedule,
+      };
     }
     return DEFAULT_PLANNER_SETTINGS;
   } catch (error) {
@@ -255,7 +268,18 @@ export async function updatePlannerSettings(
 ): Promise<PlannerSettings | null> {
   try {
     const current = await getPlannerSettings();
-    const updated = { ...current, ...partialSettings };
+    const nextDefaultSchedule = {
+      ...current.defaultSchedule,
+      ...(partialSettings.defaultSchedule || {}),
+    };
+    for (let d = 0; d <= 6; d++) {
+      if (nextDefaultSchedule[d] === undefined) nextDefaultSchedule[d] = null;
+    }
+    const updated: PlannerSettings = {
+      ...current,
+      ...partialSettings,
+      defaultSchedule: nextDefaultSchedule,
+    };
     await AsyncStorage.setItem(PLANNER_SETTINGS_KEY, JSON.stringify(updated));
     return updated;
   } catch (error) {

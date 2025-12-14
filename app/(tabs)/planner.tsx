@@ -1,4 +1,3 @@
-import PlannerSettingsModal from '@/components/PlannerSettingsModal';
 import { Workout } from '@/types/interfaces';
 import { rescheduleTrainingReminders } from '@/utils/notifications';
 import {
@@ -9,7 +8,7 @@ import {
     getWorkouts,
     savePlannedWorkout,
 } from '@/utils/storage';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
@@ -46,6 +45,7 @@ const getNext10Days = (startDate: Date) => {
 const toDateKey = (d: Date) => d.toISOString().split('T')[0];
 
 export default function PlannerScreen() {
+  const router = useRouter();
   const [currentStartDate, setCurrentStartDate] = useState(new Date());
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -54,7 +54,6 @@ export default function PlannerScreen() {
   const [plannedWorkouts, setPlannedWorkouts] = useState<{ [date: string]: string }>({});
   const [plannerSettings, setPlannerSettings] = useState<PlannerSettings>({ defaultSchedule: {} });
 
-  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const [workoutPickerVisible, setWorkoutPickerVisible] = useState(false);
   const [selectedDateForPicker, setSelectedDateForPicker] = useState<Date | null>(null);
 
@@ -289,18 +288,11 @@ export default function PlannerScreen() {
         ]}>
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => setSettingsModalVisible(true)}
+          onPress={() => router.push('/planner-settings')}
           activeOpacity={0.85}>
           <Text style={styles.fabText}>⚙</Text>
         </TouchableOpacity>
       </View>
-
-      <PlannerSettingsModal
-        visible={settingsModalVisible}
-        onClose={() => setSettingsModalVisible(false)}
-        workouts={workouts}
-        onUpdate={loadData}
-      />
 
       {/* Workout Picker */}
       <Modal visible={workoutPickerVisible} transparent animationType="fade">
