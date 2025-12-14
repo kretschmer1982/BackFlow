@@ -1,22 +1,22 @@
 import { Workout } from '@/types/interfaces';
 import {
-  ensureNotificationPermissions,
-  rescheduleTrainingReminders,
-  scheduleTestReminderInSeconds,
+    ensureNotificationPermissions,
+    rescheduleTrainingReminders,
+    scheduleTestReminderInSeconds,
 } from '@/utils/notifications';
 import {
-  PlannerSettings,
-  TrainingReminderTimeOfDay,
-  getPlannerSettings,
-  getSettings,
-  getWorkouts,
-  updatePlannerSettings,
-  updateSettings,
+    PlannerSettings,
+    TrainingReminderTimeOfDay,
+    getPlannerSettings,
+    getSettings,
+    getWorkouts,
+    updatePlannerSettings,
+    updateSettings,
 } from '@/utils/storage';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, SafeAreaView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
@@ -43,6 +43,8 @@ export default function PlannerSettingsScreen() {
 
   const [reminderEnabled, setReminderEnabled] = useState<boolean>(false);
   const [reminderTime, setReminderTime] = useState<TrainingReminderTimeOfDay>('morning');
+  const [reminderModalVisible, setReminderModalVisible] = useState(false);
+  const [reminderEnablePending, setReminderEnablePending] = useState(false);
 
   const load = useCallback(async () => {
     const settings = await getSettings();
@@ -97,8 +99,31 @@ export default function PlannerSettingsScreen() {
       }
     }
 
-    await updateSettings({ trainingReminderEnabled: value });
-    setReminderEnabled(value);
+    if (value) {
+      // erst Modal zeigen, damit es auf den Screen passt
+      setReminderEnablePending(true);
+      setReminderEnabled(true);
+      setReminderModalVisible(true);
+      return;
+    }
+
+    await updateSettings({ trainingReminderEnabled: false });
+    setReminderEnabled(false);
+    setReminderEnablePending(false);
+    setReminderModalVisible(false);
+    try {
+      await rescheduleTrainingReminders();
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleSelectReminderTime = async (time: TrainingReminderTimeOfDay) => {
+    await updateSettings({ trainingReminderTimeOfDay: time, trainingReminderEnabled: true });
+    setReminderTime(time);
+    setReminderEnabled(true);
+    setReminderEnablePending(false);
+    setReminderModalVisible(false);
     try {
       await rescheduleTrainingReminders();
     } catch {
@@ -111,19 +136,13 @@ export default function PlannerSettingsScreen() {
     }
   };
 
-  const handleSelectReminderTime = async (time: TrainingReminderTimeOfDay) => {
-    await updateSettings({ trainingReminderTimeOfDay: time, trainingReminderEnabled: true });
-    setReminderTime(time);
-    setReminderEnabled(true);
-    try {
-      await rescheduleTrainingReminders();
-    } catch {
-      Alert.alert(
-        'Hinweis',
-        Constants.appOwnership === 'expo'
-          ? 'In Expo Go sind Benachrichtigungen auf Android nur eingeschränkt testbar. Für einen zuverlässigen Test bitte einen Development Build nutzen.'
-          : 'Benachrichtigungen konnten nicht geplant werden.'
-      );
+  const closeReminderModal = async () => {
+    setReminderModalVisible(false);
+    if (reminderEnablePending) {
+      // user cancelled without choosing → keep disabled
+      setReminderEnablePending(false);
+      setReminderEnabled(false);
+      await updateSettings({ trainingReminderEnabled: false });
     }
   };
 
@@ -178,18 +197,21 @@ export default function PlannerSettingsScreen() {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.8}>
-          <Text style={styles.backButtonText}>{'< Zurück'}</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.8}>
+            <Text style={styles.backButtonText}>{'< Zurück'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSave} style={styles.saveHeaderButton} activeOpacity={0.85}>
+            <Text style={styles.saveHeaderButtonText}>Speichern</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.title}>Wochenplan</Text>
-        <Text style={styles.subtitle}>Wochentage & Trainings-Erinnerungen</Text>
       </View>
 
       <View style={styles.content}>
         {/* Oben: Wochentage */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Wochentage</Text>
-          <Text style={styles.sectionHint}>Wähle pro Tag ein Standard-Workout.</Text>
 
           {DISPLAY_ORDER.map((dayIndex) => {
             const workoutId = normalizedSchedule[dayIndex];
@@ -225,9 +247,9 @@ export default function PlannerSettingsScreen() {
           <View style={styles.reminderRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
               <Text style={styles.reminderTitle}>Erinnerungen aktivieren</Text>
-              <Text style={styles.sectionHint}>
-                Erinnerung nur an Tagen mit geplantem Training (Kalender oder Wochenplan).
-              </Text>
+              {reminderEnabled && (
+                <Text style={styles.sectionHint}>Zeit: {humanTimeLabel(reminderTime)}</Text>
+              )}
             </View>
             <Switch
               value={reminderEnabled}
@@ -236,66 +258,88 @@ export default function PlannerSettingsScreen() {
               thumbColor={'#ffffff'}
             />
           </View>
-
-          <View style={styles.timeRow}>
-            {(['morning', 'noon', 'evening'] as TrainingReminderTimeOfDay[]).map((t) => {
-              const selected = reminderTime === t;
-              return (
-                <Pressable
-                  key={t}
-                  style={[styles.timeChip, selected && styles.timeChipSelected]}
-                  onPress={() => handleSelectReminderTime(t)}>
-                  <Text style={[styles.timeChipText, selected && styles.timeChipTextSelected]}>
-                    {humanTimeLabel(t)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <TouchableOpacity
-            style={styles.testButton}
-            onPress={async () => {
-              try {
-                await scheduleTestReminderInSeconds(10);
-              } catch {
-                Alert.alert(
-                  'Hinweis',
-                  Constants.appOwnership === 'expo'
-                    ? 'In Expo Go sind Benachrichtigungen auf Android nur eingeschränkt testbar. Für einen zuverlässigen Test bitte einen Development Build nutzen.'
-                    : 'Test-Benachrichtigung konnte nicht gesendet werden.'
-                );
-              }
-            }}
-            activeOpacity={0.85}>
-            <Text style={styles.testButtonText}>Test-Benachrichtigung (10s)</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()} activeOpacity={0.85}>
-            <Text style={styles.cancelBtnText}>Abbrechen</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-            <Text style={styles.saveBtnText}>Speichern</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
       {renderWorkoutPicker()}
+
+      {/* Reminder-Time Auswahl als Modal (nur wenn Toggle aktiviert wird) */}
+      <Modal visible={reminderModalVisible} transparent animationType="fade">
+        <Pressable style={styles.overlay} onPress={closeReminderModal}>
+          <View style={styles.reminderModal}>
+            <Text style={styles.pickerTitle}>Erinnerung um…</Text>
+            <Text style={styles.pickerEmpty}>Wähle einen Zeitpunkt für Trainings-Erinnerungen.</Text>
+
+            <View style={styles.timeRow}>
+              {(['morning', 'noon', 'evening'] as TrainingReminderTimeOfDay[]).map((t) => {
+                const selected = reminderTime === t;
+                return (
+                  <Pressable
+                    key={t}
+                    style={[styles.timeChip, selected && styles.timeChipSelected]}
+                    onPress={() => handleSelectReminderTime(t)}>
+                    <Text style={[styles.timeChipText, selected && styles.timeChipTextSelected]}>
+                      {humanTimeLabel(t)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              style={styles.testButton}
+              onPress={async () => {
+                try {
+                  await scheduleTestReminderInSeconds(10);
+                } catch {
+                  Alert.alert(
+                    'Hinweis',
+                    Constants.appOwnership === 'expo'
+                      ? 'In Expo Go sind Benachrichtigungen auf Android nur eingeschränkt testbar. Für einen zuverlässigen Test bitte einen Development Build nutzen.'
+                      : 'Test-Benachrichtigung konnte nicht gesendet werden.'
+                  );
+                }
+              }}
+              activeOpacity={0.85}>
+              <Text style={styles.testButtonText}>Test-Benachrichtigung (10s)</Text>
+            </TouchableOpacity>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={closeReminderModal} activeOpacity={0.85}>
+                <Text style={styles.cancelBtnText}>Abbrechen</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={() => handleSelectReminderTime(reminderTime)}
+                activeOpacity={0.85}>
+                <Text style={styles.saveBtnText}>Übernehmen</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 8 },
-  backButton: { paddingVertical: 8, paddingHorizontal: 4, alignSelf: 'flex-start' },
+  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backButton: { paddingVertical: 8, paddingHorizontal: 4 },
   backButtonText: { color: '#4ade80', fontSize: 16, fontWeight: '700' },
-  title: { color: '#ffffff', fontSize: 22, fontWeight: '800', marginTop: 4 },
-  subtitle: { color: '#aaaaaa', fontSize: 13, marginTop: 2 },
+  saveHeaderButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: '#2a2a2a',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  saveHeaderButtonText: { color: '#4ade80', fontSize: 14, fontWeight: '800' },
+  title: { color: '#ffffff', fontSize: 20, fontWeight: '900', marginTop: 4 },
 
-  content: { flex: 1, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 16, gap: 12 },
+  content: { flex: 1, paddingHorizontal: 12, paddingTop: 6, paddingBottom: 12, gap: 10 },
 
   section: {
     borderWidth: 1,
@@ -305,9 +349,9 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   sectionHeader: { color: '#ffffff', fontSize: 15, fontWeight: '800' },
-  sectionHint: { color: '#aaaaaa', fontSize: 12, marginTop: 4, marginBottom: 8 },
+  sectionHint: { color: '#aaaaaa', fontSize: 12, marginTop: 4 },
 
-  dayRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, minHeight: 40 },
+  dayRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, minHeight: 38 },
   dayLabel: { width: 34, color: '#ffffff', fontSize: 16, fontWeight: '800' },
   workoutSelect: {
     flex: 1,
@@ -323,7 +367,7 @@ const styles = StyleSheet.create({
   workoutSelectText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
 
   reminderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  reminderTitle: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
+  reminderTitle: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
 
   timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   timeChip: {
@@ -349,23 +393,13 @@ const styles = StyleSheet.create({
   },
   testButtonText: { color: '#4ade80', fontSize: 13, fontWeight: '800' },
 
-  footer: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#3a3a3a',
-    alignItems: 'center',
-  },
-  cancelBtnText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
-  saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#4ade80', alignItems: 'center' },
-  saveBtnText: { color: '#111827', fontSize: 15, fontWeight: '900' },
-
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 30 },
   pickerContainer: { backgroundColor: '#2a2a2a', borderRadius: 16, padding: 18, maxHeight: '70%' },
   pickerTitle: { color: '#ffffff', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 12 },
   pickerEmpty: { color: '#aaaaaa', textAlign: 'center', marginVertical: 12 },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#3a3a3a' },
   pickerItemText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+
+  reminderModal: { backgroundColor: '#2a2a2a', borderRadius: 16, padding: 18, maxHeight: '70%' },
 });
 

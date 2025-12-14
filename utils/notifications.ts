@@ -52,8 +52,14 @@ async function initNotificationsOnce() {
   });
 }
 
-function toDateKey(d: Date) {
-  return d.toISOString().split('T')[0];
+function toLocalDateKey(d: Date) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+function toUtcDateKey(d: Date) {
+  return d.toISOString().slice(0, 10);
 }
 
 function getHourForTimeOfDay(time: TrainingReminderTimeOfDay): number {
@@ -122,8 +128,9 @@ export async function rescheduleTrainingReminders(): Promise<void> {
     const day = new Date(now);
     day.setDate(now.getDate() + i);
 
-    const dateKey = toDateKey(day);
-    const manual = planned[dateKey];
+    const localKey = toLocalDateKey(day);
+    const utcKey = toUtcDateKey(day);
+    const manual = planned[localKey] ?? planned[utcKey];
 
     let workoutId: string | null = null;
     if (manual !== undefined) {

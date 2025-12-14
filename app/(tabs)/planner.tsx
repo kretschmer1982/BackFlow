@@ -10,7 +10,7 @@ import {
 } from '@/utils/storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
     Alert,
     FlatList,
@@ -42,7 +42,13 @@ const getNext10Days = (startDate: Date) => {
   return days;
 };
 
-const toDateKey = (d: Date) => d.toISOString().split('T')[0];
+const toLocalDateKey = (d: Date) => {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+const toUtcDateKey = (d: Date) => d.toISOString().slice(0, 10);
 
 export default function PlannerScreen() {
   const router = useRouter();
@@ -100,8 +106,9 @@ export default function PlannerScreen() {
   };
 
   const getWorkoutIdForDate = (date: Date): string | null => {
-    const dateKey = toDateKey(date);
-    const manual = plannedWorkouts[dateKey];
+    const localKey = toLocalDateKey(date);
+    const utcKey = toUtcDateKey(date);
+    const manual = plannedWorkouts[localKey] ?? plannedWorkouts[utcKey];
 
     // Manual override exists
     if (manual !== undefined) {
@@ -143,8 +150,8 @@ export default function PlannerScreen() {
       return;
     }
 
-    const fromKey = toDateKey(dayMoveFromDate);
-    const toKey = toDateKey(toDate);
+    const fromKey = toLocalDateKey(dayMoveFromDate);
+    const toKey = toLocalDateKey(toDate);
 
     if (fromKey === toKey) {
       closeDayPicker();
@@ -186,7 +193,7 @@ export default function PlannerScreen() {
           text: 'Löschen / Pause',
           style: 'destructive',
           onPress: async () => {
-            await savePlannedWorkout(toDateKey(date), '');
+            await savePlannedWorkout(toLocalDateKey(date), '');
             await loadData();
             await rescheduleTrainingReminders();
           },
@@ -200,7 +207,7 @@ export default function PlannerScreen() {
 
   const handleSelectWorkout = async (workout: Workout) => {
     if (selectedDateForPicker) {
-      const dateKey = toDateKey(selectedDateForPicker);
+      const dateKey = toLocalDateKey(selectedDateForPicker);
       await savePlannedWorkout(dateKey, workout.id);
       await loadData();
       await rescheduleTrainingReminders();
@@ -211,7 +218,7 @@ export default function PlannerScreen() {
 
   const renderCalendarRow = ({ item }: { item: Date }) => {
     const workout = getWorkoutForDate(item);
-    const isToday = toDateKey(item) === toDateKey(new Date());
+    const isToday = toLocalDateKey(item) === toLocalDateKey(new Date());
 
     return (
       <View style={[styles.dayItem, isToday && styles.dayItemToday]}>
