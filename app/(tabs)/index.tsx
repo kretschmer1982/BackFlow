@@ -1,17 +1,20 @@
 import { Workout } from '@/types/interfaces';
+import { OnboardingOverlay } from '@/components/OnboardingOverlay';
 import {
     PlannedWorkoutEntry,
     PlannedWorkoutsStoredValue,
     deleteWorkout,
+    getHasSeenOnboarding,
     getPlannedWorkouts,
     getPlannerSettings,
     getSettings,
     getWorkouts,
     normalizePlannedValueToEntries,
+    setHasSeenOnboarding,
 } from '@/utils/storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import {
     Alert,
     FlatList,
@@ -83,6 +86,18 @@ export default function WorkoutScreen() {
   const [plannerSettings, setPlannerSettings] = useState<{ defaultSchedule: { [day: number]: string[] } }>({
     defaultSchedule: {},
   });
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    getHasSeenOnboarding().then((seen) => {
+      if (!seen) setShowOnboarding(true);
+    });
+  }, []);
+
+  const handleFinishOnboarding = () => {
+    setHasSeenOnboarding(true);
+    setShowOnboarding(false);
+  };
 
   const loadWorkouts = useCallback(async () => {
     const loadedWorkouts = await getWorkouts();
@@ -300,6 +315,11 @@ export default function WorkoutScreen() {
           <Text style={styles.fabText}>{showFabMenu ? '×' : '+'}</Text>
         </TouchableOpacity>
       </View>
+
+      <OnboardingOverlay
+        visible={showOnboarding}
+        onFinish={handleFinishOnboarding}
+      />
     </SafeAreaView>
   );
 }

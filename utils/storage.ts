@@ -7,6 +7,7 @@ const CUSTOM_EXERCISES_KEY = '@backflow_custom_exercises';
 const SETTINGS_KEY = '@backflow_settings';
 const PLANNED_WORKOUTS_KEY = '@backflow_planned_workouts';
 const PLANNER_SETTINGS_KEY = '@backflow_planner_settings';
+const HAS_SEEN_ONBOARDING_KEY = '@backflow_has_seen_onboarding';
 
 export type TrainingReminderTimeOfDay = 'morning' | 'noon' | 'evening';
 
@@ -381,5 +382,23 @@ export async function deletePlannedWorkout(date: string): Promise<boolean> {
   } catch (error) {
     console.error('Fehler beim Löschen des geplanten Workouts:', error);
     return false;
+  }
+}
+
+export async function getHasSeenOnboarding(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(HAS_SEEN_ONBOARDING_KEY);
+    return val === 'true';
+  } catch (error) {
+    console.error('Fehler beim Laden des Onboarding-Status:', error);
+    return false;
+  }
+}
+
+export async function setHasSeenOnboarding(seen: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(HAS_SEEN_ONBOARDING_KEY, String(seen));
+  } catch (error) {
+    console.error('Fehler beim Speichern des Onboarding-Status:', error);
   }
 }

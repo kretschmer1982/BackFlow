@@ -1,50 +1,37 @@
-# Welcome to your Expo app 👋
+# BackFlow
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+BackFlow is a simple, focused workout companion to help you build a consistent back & core routine. It lets you create workouts, plan training days, and run guided sessions with timers and spoken cues.
 
-## Get started
+## Core features
 
-1. Install dependencies
+- **Workouts**: Create and edit workouts from a list of exercises (duration- or reps-based).
+- **Planner**: Plan up to **3 trainings per day** and set routine days.
+- **Run mode**: Guided workout execution with countdowns, optional beeps, and voice announcements.
+- **Stats**: Monthly training frequency and yearly totals.
+- **Customization**: App background color and training reminder settings.
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run locally (development)
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Install the app manually via APK (Android)
 
-## Learn more
+### APK location / links
 
-To learn more about developing your project with Expo, look at the following resources:
+- **Repo path**: `builds/android/application-340ee1a5-16da-40b8-8108-f14c3af88337.apk`
+- **EAS Build link** (if you built via EAS): copy the `.apk` download URL from your build in the Expo dashboard (Project → Builds → Android).
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+1. **Get the APK** on your Android device (download it from a build link, transfer it via USB, or share it from another device).
+2. On Android, enable installing from unknown sources:
+   - **Android 8+**: `Settings` → `Apps` → `Special app access` → `Install unknown apps` → allow your browser / file manager.
+   - **Android 7 and below**: `Settings` → `Security` → enable `Unknown sources`.
+3. Open the APK file and tap **Install**.
+4. After installation, you can disable “Install unknown apps” again if you want.
 
-## Join the community
+## Notes
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- If you install a new APK over an old one, the package name must match and the APK must be signed appropriately.
+- This project uses [Expo Router](https://docs.expo.dev/router/introduction/) (file-based routing).

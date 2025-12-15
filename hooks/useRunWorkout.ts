@@ -235,10 +235,9 @@ export function useRunWorkout({
     lastPraiseAtRef.current = Date.now();
 
     try {
-      // etwas mehr Energie: schneller + höhere Tonlage (kleine Zufalls-Variation)
-      const rate = 1.12 + Math.random() * 0.06; // 1.12..1.18
-      const pitch = 1.18 + Math.random() * 0.12; // 1.18..1.30
-      Speech.speak(next, { language: 'de-DE', rate, pitch });
+      // Standardstimme nutzen, nur schneller damit es nicht "lahm" klingt
+      const rate = 1.15 + Math.random() * 0.05; // 1.15..1.20
+      Speech.speak(next, { language: 'de-DE', rate });
     } catch {
       // ignore
     }
@@ -428,15 +427,27 @@ export function useRunWorkout({
         if (workoutStateRef.current !== 'getReady') return;
         if (timeRemainingRef.current <= 1) return; // kurz vor Phasenwechsel -> skip
 
-        const rate = 1.05 + Math.random() * 0.05; // 1.05..1.10
-        const pitch = 1.10 + Math.random() * 0.10; // 1.10..1.20
         try {
           const lang = detectExerciseTitleLanguageTag(exercise.name);
-          const text =
-            lang === 'en-US'
-              ? `Next up: ${exercise.name}!`
-              : `Nächste Übung: ${exercise.name}!`;
-          Speech.speak(text, { language: lang, rate, pitch });
+          const rate = 1.12 + Math.random() * 0.05; // 1.12..1.17
+
+          if (lang === 'en-US') {
+            // Nur der Name wird Englisch gesprochen, Rest Deutsch.
+            // Wir ketten die Ansagen, damit sie nicht überlappen.
+            Speech.speak('Nächste Übung:', {
+              language: 'de-DE',
+              rate,
+              onDone: () => {
+                try {
+                  Speech.speak(exercise.name, { language: 'en-US', rate });
+                } catch {
+                  // ignore
+                }
+              },
+            });
+          } else {
+            Speech.speak(`Nächste Übung: ${exercise.name}!`, { language: 'de-DE', rate });
+          }
         } catch {
           // ignore
         }

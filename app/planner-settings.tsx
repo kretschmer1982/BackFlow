@@ -517,3 +517,5 @@ const styles = StyleSheet.create({
   reminderModal: { backgroundColor: '#2a2a2a', borderRadius: 16, padding: 18, maxHeight: '70%' },
 });
 
+
+

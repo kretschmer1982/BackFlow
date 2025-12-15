@@ -227,3 +227,5 @@ export async function rescheduleTrainingReminders(): Promise<void> {
 
   await updateSettings({ trainingReminderHasScheduled: scheduledCount > 0 });
 }
+
+
