@@ -1,14 +1,14 @@
 import { getSettings, updateSettings } from '@/utils/storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
     Pressable,
-    SafeAreaView,
     StyleSheet,
     Text,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function isLightColor(color: string): boolean {
   const hex = color.replace('#', '');
@@ -24,12 +24,18 @@ export default function SettingsScreen() {
   const router = useRouter();
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
   const [enableBeep, setEnableBeep] = useState<boolean>(true);
+  const [exerciseTransitionSeconds, setExerciseTransitionSeconds] = useState<number>(15);
 
   const loadSettings = useCallback(async () => {
     const settings = await getSettings();
     setBackgroundColor(settings.appBackgroundColor);
     setEnableBeep(
       typeof settings.enableBeep === 'boolean' ? settings.enableBeep : true
+    );
+    setExerciseTransitionSeconds(
+      typeof (settings as any).exerciseTransitionSeconds === 'number' && Number.isFinite((settings as any).exerciseTransitionSeconds)
+        ? Math.max(0, Math.min(60, Math.round((settings as any).exerciseTransitionSeconds)))
+        : 15
     );
   }, []);
 
@@ -100,7 +106,7 @@ export default function SettingsScreen() {
                 styles.sectionSubtitle,
                 isLightBackground && styles.sectionSubtitleOnLight,
               ]}>
-              Piepton bei Countdown und Phasenwechsel ein- oder ausschalten.
+              Akustische Signale (Beeps & Ansagen) ein- oder ausschalten.
             </Text>
           </View>
           <View style={styles.entryRight}>
@@ -113,6 +119,52 @@ export default function SettingsScreen() {
             </Text>
           </View>
         </Pressable>
+
+        <View style={styles.entryRow}>
+          <View style={styles.entryTextContainer}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                isLightBackground && styles.sectionTitleOnLight,
+              ]}>
+              Übergang zwischen Übungen
+            </Text>
+            <Text
+              style={[
+                styles.sectionSubtitle,
+                isLightBackground && styles.sectionSubtitleOnLight,
+              ]}>
+              Dauer der „Get Ready“-Phase zwischen zwei Übungen.
+            </Text>
+          </View>
+          <View style={styles.entryRight}>
+            <Pressable
+              style={styles.stepButton}
+              onPress={async () => {
+                const next = Math.max(0, exerciseTransitionSeconds - 5);
+                setExerciseTransitionSeconds(next);
+                await updateSettings({ exerciseTransitionSeconds: next } as any);
+              }}>
+              <Text style={styles.stepButtonText}>−</Text>
+            </Pressable>
+            <Text
+              style={[
+                styles.reminderStatus,
+                isLightBackground && styles.reminderStatusOnLight,
+              ]}>
+              {exerciseTransitionSeconds}s
+            </Text>
+            <Pressable
+              style={styles.stepButton}
+              onPress={async () => {
+                const next = Math.min(60, exerciseTransitionSeconds + 5);
+                setExerciseTransitionSeconds(next);
+                await updateSettings({ exerciseTransitionSeconds: next } as any);
+              }}>
+              <Text style={styles.stepButtonText}>+</Text>
+            </Pressable>
+          </View>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -199,6 +251,22 @@ const styles = StyleSheet.create({
   },
   reminderStatusOnLight: {
     color: '#4b5563',
+  },
+  stepButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#2a2a2a',
+    borderWidth: 1,
+    borderColor: '#333333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '900',
+    lineHeight: 18,
   },
 });
 

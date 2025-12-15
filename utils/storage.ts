@@ -18,8 +18,12 @@ export interface BackflowSettings {
   trainingReminderEnabled: boolean;
   // Zeitpunkt der Erinnerung
   trainingReminderTimeOfDay: TrainingReminderTimeOfDay;
+  // Wurde jemals eine Trainings-Erinnerung geplant? (für Cleanup in Expo Go)
+  trainingReminderHasScheduled: boolean;
   // Piepton während des Workouts (Countdown / Phasenwechsel)
   enableBeep: boolean;
+  // Übergang zwischen Übungen (Sekunden)
+  exerciseTransitionSeconds: number;
 }
 
 // Standard-Einstellungen
@@ -28,22 +32,62 @@ const DEFAULT_SETTINGS: BackflowSettings = {
   appBackgroundColor: '#000000',
   trainingReminderEnabled: false,
   trainingReminderTimeOfDay: 'morning',
+  trainingReminderHasScheduled: false,
   enableBeep: true,
+  exerciseTransitionSeconds: 15,
 };
 
 // Planner Types
+export interface PlannedWorkoutEntry {
+  workoutId: string;
+  // Training durchgeführt?
+  completed?: boolean;
+  // Manuell erfasste Gesamtdauer in Minuten (z.B. für Vergangenheit)
+  durationMinutes?: number;
+}
+
+// legacy string oder neue Struktur oder Pause ('' -> bewusst kein Training)
+export type PlannedWorkoutValue = '' | string | PlannedWorkoutEntry;
+// Neu: pro Tag können mehrere Trainings gespeichert sein
+export type PlannedWorkoutsStoredValue = PlannedWorkoutValue | PlannedWorkoutValue[];
+
 export interface PlannedWorkoutsMap {
-  [date: string]: string; // YYYY-MM-DD -> workoutId
+  [date: string]: PlannedWorkoutsStoredValue; // YYYY-MM-DD -> value | value[]
 }
 
 export interface PlannerSettings {
   // 0=Sun, 1=Mon, ..., 6=Sat
-  defaultSchedule: { [day: number]: string | null };
+  // pro Wochentag bis zu 3 Workout-IDs (Reihenfolge = Anzeige)
+  defaultSchedule: { [day: number]: string[] };
 }
 
 const DEFAULT_PLANNER_SETTINGS: PlannerSettings = {
-  defaultSchedule: { 0: null, 1: null, 2: null, 3: null, 4: null, 5: null, 6: null },
+  defaultSchedule: { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
 };
+
+function normalizeDefaultSchedule(input: any): { [day: number]: string[] } {
+  const out: { [day: number]: string[] } = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+  const source = input && typeof input === 'object' ? input : {};
+  for (let d = 0; d <= 6; d++) {
+    const v = source[d];
+    let arr: string[] = [];
+    if (Array.isArray(v)) {
+      arr = v.filter((x) => typeof x === 'string' && x.trim() !== '');
+    } else if (typeof v === 'string' && v.trim() !== '') {
+      arr = [v];
+    } else if (v === null || v === undefined || v === false) {
+      arr = [];
+    }
+    // unique + max 3
+    const uniq: string[] = [];
+    for (const id of arr) {
+      if (!uniq.includes(id)) uniq.push(id);
+      if (uniq.length >= 3) break;
+    }
+    out[d] = uniq;
+  }
+  return out;
+}
 
 // Einstellungen laden
 export async function getSettings(): Promise<BackflowSettings> {
@@ -92,10 +136,18 @@ export async function getSettings(): Promise<BackflowSettings> {
             ? migrated.trainingReminderEnabled
             : DEFAULT_SETTINGS.trainingReminderEnabled,
         trainingReminderTimeOfDay: migrated.trainingReminderTimeOfDay,
+        trainingReminderHasScheduled:
+          typeof migrated.trainingReminderHasScheduled === 'boolean'
+            ? migrated.trainingReminderHasScheduled
+            : DEFAULT_SETTINGS.trainingReminderHasScheduled,
         enableBeep:
           typeof migrated.enableBeep === 'boolean'
             ? migrated.enableBeep
             : DEFAULT_SETTINGS.enableBeep,
+        exerciseTransitionSeconds:
+          typeof migrated.exerciseTransitionSeconds === 'number' && Number.isFinite(migrated.exerciseTransitionSeconds)
+            ? Math.max(0, Math.min(60, Math.round(migrated.exerciseTransitionSeconds)))
+            : DEFAULT_SETTINGS.exerciseTransitionSeconds,
       };
 
       // Speichere migrierte Settings zurück
@@ -242,14 +294,7 @@ export async function getPlannerSettings(): Promise<PlannerSettings> {
     const jsonValue = await AsyncStorage.getItem(PLANNER_SETTINGS_KEY);
     if (jsonValue != null) {
       const parsed = JSON.parse(jsonValue);
-      const mergedDefaultSchedule = {
-        ...DEFAULT_PLANNER_SETTINGS.defaultSchedule,
-        ...(parsed?.defaultSchedule || {}),
-      };
-      // Ensure all days exist (0..6)
-      for (let d = 0; d <= 6; d++) {
-        if (mergedDefaultSchedule[d] === undefined) mergedDefaultSchedule[d] = null;
-      }
+      const mergedDefaultSchedule = normalizeDefaultSchedule(parsed?.defaultSchedule);
       return {
         ...DEFAULT_PLANNER_SETTINGS,
         ...parsed,
@@ -268,13 +313,11 @@ export async function updatePlannerSettings(
 ): Promise<PlannerSettings | null> {
   try {
     const current = await getPlannerSettings();
-    const nextDefaultSchedule = {
+    const merged = {
       ...current.defaultSchedule,
       ...(partialSettings.defaultSchedule || {}),
     };
-    for (let d = 0; d <= 6; d++) {
-      if (nextDefaultSchedule[d] === undefined) nextDefaultSchedule[d] = null;
-    }
+    const nextDefaultSchedule = normalizeDefaultSchedule(merged);
     const updated: PlannerSettings = {
       ...current,
       ...partialSettings,
@@ -298,16 +341,35 @@ export async function getPlannedWorkouts(): Promise<PlannedWorkoutsMap> {
   }
 }
 
-export async function savePlannedWorkout(date: string, workoutId: string): Promise<boolean> {
+export async function savePlannedWorkout(
+  date: string,
+  workout: PlannedWorkoutsStoredValue
+): Promise<boolean> {
   try {
     const planned = await getPlannedWorkouts();
-    planned[date] = workoutId;
+    planned[date] = workout;
     await AsyncStorage.setItem(PLANNED_WORKOUTS_KEY, JSON.stringify(planned));
     return true;
   } catch (error) {
     console.error('Fehler beim Speichern des geplanten Workouts:', error);
     return false;
   }
+}
+
+export function normalizePlannedValueToEntries(value: PlannedWorkoutsStoredValue | undefined): PlannedWorkoutEntry[] {
+  if (value === undefined) return [];
+  if (value === '') return [];
+  const toEntry = (v: PlannedWorkoutValue): PlannedWorkoutEntry | null => {
+    if (v === '' || v === null || v === undefined) return null;
+    if (typeof v === 'string') return { workoutId: v };
+    if (typeof v === 'object' && v && typeof v.workoutId === 'string') return v;
+    return null;
+  };
+  if (Array.isArray(value)) {
+    return value.map(toEntry).filter(Boolean) as PlannedWorkoutEntry[];
+  }
+  const single = toEntry(value);
+  return single ? [single] : [];
 }
 
 export async function deletePlannedWorkout(date: string): Promise<boolean> {

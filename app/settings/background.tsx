@@ -1,15 +1,15 @@
 import { getSettings, updateSettings } from '@/utils/storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     FlatList,
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // 25 gängige Farben (dunkel, grau, hell + Akzentfarben)
 const COLOR_PALETTE: string[] = [

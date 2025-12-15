@@ -1,5 +1,4 @@
 import Constants from 'expo-constants';
-import type * as NotificationsType from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import {
@@ -8,15 +7,44 @@ import {
     getPlannerSettings,
     getSettings,
     getWorkouts,
+    updateSettings,
 } from '@/utils/storage';
 
 const CHANNEL_ID = 'training-reminders';
 
-let cachedNotifications: typeof NotificationsType | null = null;
+// In Expo Go Android darf expo-notifications nicht "aus Versehen" geladen werden,
+// sonst erscheint die Push-Warnung bereits beim App-Start.
+// Deshalb: KEIN (auch kein type-only) Import von 'expo-notifications' in diesem File.
+let cachedNotifications: any | null = null;
 let initialized = false;
+const isExpoGo =
+  // SDK-abhängig: früher appOwnership, inzwischen executionEnvironment
+  (Constants as any).appOwnership === 'expo' ||
+  (Constants as any).executionEnvironment === 'storeClient';
+const isExpoGoAndroid = isExpoGo && Platform.OS === 'android';
 
 async function getNotifications() {
   if (cachedNotifications) return cachedNotifications;
+
+  // Expo Go (Android): expo-notifications löst beim Import eine Push-Warnung aus.
+  // Für lokale Trainings-Erinnerungen nutzen wir hier deshalb ein No-Op Stub.
+  // (In Expo Go sind Notifications ohnehin nur eingeschränkt testbar.)
+  if (isExpoGoAndroid) {
+    cachedNotifications = {
+      AndroidImportance: { DEFAULT: 3 },
+      setAutoServerRegistrationEnabledAsync: async () => {},
+      setNotificationHandler: () => {},
+      setNotificationChannelAsync: async () => {},
+      // In Expo Go sollen wir die Reminder-Einstellung speichern können,
+      // auch wenn echte OS-Prompts/Reminders nur eingeschränkt testbar sind.
+      getPermissionsAsync: async () => ({ granted: true }),
+      requestPermissionsAsync: async () => ({ granted: true }),
+      cancelAllScheduledNotificationsAsync: async () => {},
+      scheduleNotificationAsync: async () => {},
+    };
+    return cachedNotifications;
+  }
+
   cachedNotifications = await import('expo-notifications');
   return cachedNotifications;
 }
@@ -31,9 +59,7 @@ async function initNotificationsOnce() {
   // expo-notifications versucht sonst u.U. automatisch Push-Token-Registrierung.
   // Wir brauchen hier nur lokale Notifications, daher Auto-Registration aus.
   try {
-    // @ts-expect-error - je nach Version vorhanden
     if (typeof Notifications.setAutoServerRegistrationEnabledAsync === 'function') {
-      // @ts-expect-error - je nach Version vorhanden
       await Notifications.setAutoServerRegistrationEnabledAsync(false);
     }
   } catch {
@@ -50,6 +76,12 @@ async function initNotificationsOnce() {
       shouldSetBadge: false,
     }),
   });
+}
+
+async function cancelAllScheduledLocalNotifications(): Promise<void> {
+  await initNotificationsOnce();
+  const Notifications = await getNotifications();
+  await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
 function toLocalDateKey(d: Date) {
@@ -86,6 +118,7 @@ async function ensureAndroidChannel() {
 }
 
 export async function ensureNotificationPermissions(): Promise<boolean> {
+  if (isExpoGoAndroid) return true;
   await ensureAndroidChannel();
   await initNotificationsOnce();
   const Notifications = await getNotifications();
@@ -103,6 +136,24 @@ export async function ensureNotificationPermissions(): Promise<boolean> {
  * (manuell geplant oder via Wochenplan), und nur für zukünftige Uhrzeiten.
  */
 export async function rescheduleTrainingReminders(): Promise<void> {
+  const settings = await getSettings();
+
+  // Wenn deaktiviert: in Expo Go nichts anfassen (sonst Warnungen),
+  // in nativen Builds geplante Notifications entfernen.
+  if (!settings.trainingReminderEnabled) {
+    if (isExpoGoAndroid) return;
+
+    // Native builds: aufräumen
+    await ensureAndroidChannel();
+    try {
+      await cancelAllScheduledLocalNotifications();
+    } catch {
+      // ignore
+    }
+    await updateSettings({ trainingReminderHasScheduled: false });
+    return;
+  }
+
   await ensureAndroidChannel();
   await initNotificationsOnce();
   const Notifications = await getNotifications();
@@ -110,9 +161,6 @@ export async function rescheduleTrainingReminders(): Promise<void> {
   // Wir canceln bewusst alle geplanten lokalen Notifications dieser App,
   // damit keine Duplikate entstehen.
   await Notifications.cancelAllScheduledNotificationsAsync();
-
-  const settings = await getSettings();
-  if (!settings.trainingReminderEnabled) return;
 
   const hasPerm = await ensureNotificationPermissions();
   if (!hasPerm) return;
@@ -123,6 +171,7 @@ export async function rescheduleTrainingReminders(): Promise<void> {
 
   const hour = getHourForTimeOfDay(settings.trainingReminderTimeOfDay);
   const now = new Date();
+  let scheduledCount = 0;
 
   for (let i = 0; i < 30; i++) {
     const day = new Date(now);
@@ -134,7 +183,19 @@ export async function rescheduleTrainingReminders(): Promise<void> {
 
     let workoutId: string | null = null;
     if (manual !== undefined) {
-      workoutId = manual === '' ? null : manual;
+      if (manual === '') {
+        workoutId = null;
+      } else if (Array.isArray(manual)) {
+        const first = manual.find((v: any) => v && typeof v === 'object' && typeof v.workoutId === 'string')
+          ?? manual.find((v: any) => typeof v === 'string');
+        if (!first) workoutId = null;
+        else if (typeof first === 'string') workoutId = first;
+        else workoutId = first.workoutId;
+      } else if (typeof manual === 'object' && manual && typeof manual.workoutId === 'string') {
+        workoutId = manual.workoutId;
+      } else {
+        workoutId = manual as any;
+      }
     } else {
       const dow = day.getDay();
       workoutId = plannerSettings.defaultSchedule[dow] ?? null;
@@ -161,31 +222,8 @@ export async function rescheduleTrainingReminders(): Promise<void> {
       // Date-Trigger: neuer API-Shape (Date als param ist deprecated)
       trigger: { type: 'date', date: triggerDate },
     });
-  }
-}
-
-export async function scheduleTestReminderInSeconds(seconds: number = 10) {
-  // Hinweis: In Expo Go (Android) sind Remote Push Notifications nicht testbar.
-  // Lokale Notifications sollten funktionieren – falls Expo Go trotzdem eine Warnung wirft,
-  // ist ein Development Build der saubere Weg.
-  if (Constants.appOwnership === 'expo' && Platform.OS === 'android') {
-    // best effort: wir versuchen trotzdem lokal zu schedulen
+    scheduledCount++;
   }
 
-  await ensureAndroidChannel();
-  const hasPerm = await ensureNotificationPermissions();
-  if (!hasPerm) return;
-
-  await initNotificationsOnce();
-  const Notifications = await getNotifications();
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Test: Training-Erinnerung',
-      body: 'Wenn du das siehst, funktionieren lokale Benachrichtigungen.',
-      sound: 'default',
-      ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
-    },
-    trigger: { seconds },
-  });
+  await updateSettings({ trainingReminderHasScheduled: scheduledCount > 0 });
 }
-

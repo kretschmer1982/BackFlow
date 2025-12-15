@@ -1,18 +1,38 @@
 import { Workout } from '@/types/interfaces';
-import { deleteWorkout, getSettings, getWorkouts } from '@/utils/storage';
+import {
+    PlannedWorkoutEntry,
+    PlannedWorkoutsStoredValue,
+    deleteWorkout,
+    getPlannedWorkouts,
+    getPlannerSettings,
+    getSettings,
+    getWorkouts,
+    normalizePlannedValueToEntries,
+} from '@/utils/storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
     Alert,
     FlatList,
     Pressable,
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+function toLocalDateKey(d: Date) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function toUtcDateKey(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
 
 function parseHexColor(hex: string) {
   const sanitized = hex.replace('#', '');
@@ -59,6 +79,10 @@ export default function WorkoutScreen() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
+  const [planned, setPlanned] = useState<Record<string, any>>({});
+  const [plannerSettings, setPlannerSettings] = useState<{ defaultSchedule: { [day: number]: string[] } }>({
+    defaultSchedule: {},
+  });
 
   const loadWorkouts = useCallback(async () => {
     const loadedWorkouts = await getWorkouts();
@@ -77,8 +101,49 @@ export default function WorkoutScreen() {
     useCallback(() => {
       loadWorkouts();
       loadSettings();
+      (async () => {
+        try {
+          const p = await getPlannedWorkouts();
+          setPlanned(p as any);
+          const ps = await getPlannerSettings();
+          setPlannerSettings(ps);
+        } catch {
+          // ignore
+        }
+      })();
     }, [loadWorkouts, loadSettings])
   );
+
+  const todayPlanned = useMemo(() => {
+    const today = new Date();
+    const localKey = toLocalDateKey(today);
+    const utcKey = toUtcDateKey(today);
+    const manual: any = planned[localKey] ?? planned[utcKey];
+
+    let entries: PlannedWorkoutEntry[] = [];
+    if (manual !== undefined) {
+      entries = normalizePlannedValueToEntries(manual as PlannedWorkoutsStoredValue).slice(0, 3);
+    } else {
+      const dow = today.getDay();
+      const defaultIds = Array.isArray(plannerSettings.defaultSchedule?.[dow]) ? plannerSettings.defaultSchedule[dow] : [];
+      entries = defaultIds.slice(0, 3).map((id) => ({ workoutId: id }));
+    }
+
+    return entries.map((e) => {
+      const w = workouts.find((x) => x.id === e.workoutId) ?? null;
+      return { entry: e, workout: w };
+    });
+  }, [planned, plannerSettings.defaultSchedule, workouts]);
+
+  const todayPlannedByWorkoutId = useMemo(() => {
+    const map = new Map<string, { entry: PlannedWorkoutEntry; index: number }>();
+    for (let i = 0; i < todayPlanned.length; i++) {
+      const e = todayPlanned[i]?.entry;
+      if (!e || !e.workoutId) continue;
+      if (!map.has(e.workoutId)) map.set(e.workoutId, { entry: e, index: i });
+    }
+    return map;
+  }, [todayPlanned]);
 
   const handleWorkoutPress = (workout: Workout) => {
     router.push({
@@ -134,12 +199,21 @@ export default function WorkoutScreen() {
 
   const renderWorkoutItem = ({ item }: { item: Workout }) => {
     const { cardBackground, cardBorder } = getWorkoutCardColors(backgroundColor);
+    const plannedInfo = todayPlannedByWorkoutId.get(item.id);
+    const borderColor = plannedInfo ? '#4ade80' : cardBorder;
+    const plannedLabelParts: string[] = [];
+    if (plannedInfo) {
+      plannedLabelParts.push(plannedInfo.entry.completed ? 'Heute gerockt!' : 'Heute geplant');
+      if (todayPlanned.length > 1) plannedLabelParts.push(`#${plannedInfo.index + 1}`);
+      if (typeof plannedInfo.entry.durationMinutes === 'number') plannedLabelParts.push(`${plannedInfo.entry.durationMinutes} Min.`);
+    }
+    const plannedLabel = plannedLabelParts.join(' • ');
 
     return (
       <TouchableOpacity
         style={[
           styles.workoutItem,
-          { backgroundColor: cardBackground, borderColor: cardBorder },
+          { backgroundColor: cardBackground, borderColor },
         ]}
         onPress={() => handleWorkoutPress(item)}
         activeOpacity={0.7}>
@@ -148,6 +222,11 @@ export default function WorkoutScreen() {
           <Text style={styles.workoutInfo}>
             {item.exercises.length} {item.exercises.length === 1 ? 'Übung' : 'Übungen'}
           </Text>
+          {!!plannedInfo && (
+            <Text style={styles.workoutPlanned} numberOfLines={1}>
+              {plannedLabel}
+            </Text>
+          )}
         </View>
         <View style={styles.actionButtons}>
           <Pressable
@@ -272,6 +351,12 @@ const styles = StyleSheet.create({
   workoutInfo: {
     fontSize: 16,
     color: '#aaaaaa',
+  },
+  workoutPlanned: {
+    marginTop: 6,
+    fontSize: 13,
+    color: '#4ade80',
+    fontWeight: '800',
   },
   actionButtons: {
     flexDirection: 'row',

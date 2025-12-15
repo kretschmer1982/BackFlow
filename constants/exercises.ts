@@ -174,5 +174,5 @@ export function getImageSource(
 // Workout-Konfiguration
 export const EXERCISE_DURATION = 40; // Sekunden (Standard für duration-Übungen)
 export const REST_DURATION = 20; // Sekunden
-export const GET_READY_DURATION = 5; // Sekunden
+export const GET_READY_DURATION = 15; // Sekunden (Default, kann in Settings überschrieben werden)
 export const TOTAL_ROUNDS = 5;

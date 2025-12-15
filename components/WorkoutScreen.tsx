@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import {
+    Exercise,
+    EXERCISES,
+    GET_READY_DURATION,
+    TOTAL_ROUNDS,
+} from '@/constants/exercises';
 import { getSettings } from '@/utils/storage';
 import { StatusBar } from 'expo-status-bar';
-import {
-  EXERCISES,
-  TOTAL_ROUNDS,
-  GET_READY_DURATION,
-  Exercise,
-} from '@/constants/exercises';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type WorkoutState = 'getReady' | 'exercise';
 

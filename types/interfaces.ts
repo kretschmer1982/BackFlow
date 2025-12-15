@@ -13,6 +13,8 @@ export interface Workout {
   id: string;
   name: string;
   exercises: WorkoutExercise[];
+  // Optional: manuell erfasste Gesamtzeit (Minuten) – für Statistik/Planung
+  totalMinutes?: number;
   createdAt?: number; // Timestamp für Sortierung
 }
 

@@ -1,11 +1,75 @@
 import { GET_READY_DURATION } from '@/constants/exercises';
 import { Workout, WorkoutExercise } from '@/types/interfaces';
-import { playBeep } from '@/utils/sound';
+import { useBeepPlayer } from '@/utils/sound';
 import { getSettings, getWorkoutById } from '@/utils/storage';
-import { Audio } from 'expo-av';
+import * as Speech from 'expo-speech';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type WorkoutState = 'getReady' | 'exercise' | 'completed';
+
+function detectExerciseTitleLanguageTag(title: string): 'de-DE' | 'en-US' {
+  const t = (title || '').trim();
+  if (!t) return 'de-DE';
+
+  // Harte Indikatoren für Deutsch
+  if (/[äöüßÄÖÜ]/.test(t)) return 'de-DE';
+
+  const tokens = t
+    .toLowerCase()
+    .replace(/[^a-zA-Zäöüß0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const germanWords = new Set([
+    'links',
+    'rechts',
+    'zur',
+    'zum',
+    'im',
+    'in',
+    'mit',
+    'ohne',
+    'und',
+    'knie',
+    'brust',
+    'rumpfrotation',
+  ]);
+  const englishWords = new Set([
+    'plank',
+    'superman',
+    'bird-dog',
+    'bird',
+    'dog',
+    'glute',
+    'bridge',
+    'cat-cow',
+    'cat',
+    'cow',
+    'sit-ups',
+    'sit',
+    'ups',
+    'side',
+    'reverse',
+    'dead',
+    'bug',
+    'childs',
+    'pose',
+    'hip',
+    'hinge',
+    'wall',
+  ]);
+
+  for (const tok of tokens) {
+    if (germanWords.has(tok)) return 'de-DE';
+  }
+  for (const tok of tokens) {
+    if (englishWords.has(tok)) return 'en-US';
+  }
+
+  // Fallback-Heuristik: nur ASCII-Buchstaben/Trenner -> eher Englisch, sonst Deutsch
+  const asciiOnly = /^[\x00-\x7F]+$/.test(t);
+  return asciiOnly ? 'en-US' : 'de-DE';
+}
 
 interface UseRunWorkoutParams {
   workoutId?: string;
@@ -21,6 +85,8 @@ interface UseRunWorkoutResult {
   currentExercise: WorkoutExercise | null;
   timeRemaining: number;
   elapsedTime: number;
+  sessionDurationMinutes: number;
+  silentFinishSignalId: number;
   isPaused: boolean;
   setIsPaused: (value: boolean) => void;
   handlePhaseComplete: () => Promise<void>;
@@ -32,23 +98,73 @@ export function useRunWorkout({
   workoutId,
   onWorkoutNotFound,
 }: UseRunWorkoutParams): UseRunWorkoutResult {
+  const normalizeExercise = useCallback((ex: any): WorkoutExercise => {
+    const type: 'duration' | 'reps' = ex?.type === 'reps' ? 'reps' : 'duration';
+    const rawAmount = ex?.amount;
+    const num =
+      typeof rawAmount === 'number'
+        ? rawAmount
+        : typeof rawAmount === 'string'
+          ? parseInt(rawAmount, 10)
+          : NaN;
+
+    // Fallbacks für alte/kaputte Daten
+    const fallback = type === 'duration' ? 40 : 10;
+    const amount = Number.isFinite(num) && num > 0 ? Math.round(num) : fallback;
+
+    return {
+      ...ex,
+      type,
+      amount,
+    } as WorkoutExercise;
+  }, []);
+
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
   const [workoutState, setWorkoutState] =
     useState<WorkoutState>('getReady');
+  const workoutStateRef = useRef<WorkoutState>('getReady');
   const [currentRound, setCurrentRound] = useState(1);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] =
     useState(GET_READY_DURATION);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const sessionStartRef = useRef<number>(Date.now());
   const [isPaused, setIsPaused] = useState(false);
   const [enableBeep, setEnableBeep] = useState(true);
+  const [exerciseTransitionSeconds, setExerciseTransitionSeconds] = useState<number>(GET_READY_DURATION);
+  const [silentFinishSignalId, setSilentFinishSignalId] = useState(0);
+
+  const isPausedRef = useRef<boolean>(false);
+  const enableBeepRef = useRef<boolean>(true);
+  const timeRemainingRef = useRef<number>(GET_READY_DURATION);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null
   );
-  const soundRef = useRef<Audio.Sound | null>(null);
   const TOTAL_ROUNDS = 1; // Eine Runde pro Workout
+  const { playBeep, playDoubleBeep } = useBeepPlayer();
+  const phaseCompleteInFlightRef = useRef(false);
+  const lastSpokenKeyRef = useRef<string>('');
+  const lastPraiseRef = useRef<string>('');
+  const lastPraiseAtRef = useRef<number>(0);
+  const nextSpeakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    workoutStateRef.current = workoutState;
+  }, [workoutState]);
+
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
+
+  useEffect(() => {
+    enableBeepRef.current = enableBeep;
+  }, [enableBeep]);
+
+  useEffect(() => {
+    timeRemainingRef.current = timeRemaining;
+  }, [timeRemaining]);
 
   // Workout laden
   useEffect(() => {
@@ -57,14 +173,22 @@ export function useRunWorkout({
 
       const loadedWorkout = await getWorkoutById(workoutId);
       if (loadedWorkout) {
-        setWorkout(loadedWorkout);
+        // Defensive: alte gespeicherte Daten können falsche Typen/amounts enthalten
+        const sanitized: Workout = {
+          ...loadedWorkout,
+          exercises: Array.isArray(loadedWorkout.exercises)
+            ? loadedWorkout.exercises.map((ex) => normalizeExercise(ex))
+            : [],
+        };
+        setWorkout(sanitized);
+        sessionStartRef.current = Date.now();
       } else {
         alert('Workout nicht gefunden');
         onWorkoutNotFound?.();
       }
     };
     loadWorkout();
-  }, [workoutId, onWorkoutNotFound]);
+  }, [workoutId, onWorkoutNotFound, normalizeExercise]);
 
   // Globale Hintergrundfarbe laden
   useEffect(() => {
@@ -74,32 +198,62 @@ export function useRunWorkout({
       setEnableBeep(
         typeof settings.enableBeep === 'boolean' ? settings.enableBeep : true
       );
+      const ts =
+        typeof (settings as any).exerciseTransitionSeconds === 'number' && Number.isFinite((settings as any).exerciseTransitionSeconds)
+          ? Math.max(0, Math.min(60, Math.round((settings as any).exerciseTransitionSeconds)))
+          : GET_READY_DURATION;
+      setExerciseTransitionSeconds(ts);
+      // Wenn wir gerade in "getReady" sind und noch am Anfang stehen, passe den Countdown an.
+      setTimeRemaining((prev) => (workoutStateRef.current === 'getReady' && prev === GET_READY_DURATION ? ts : prev));
     };
     loadSettings();
   }, []);
 
-  // Audio-Modus setzen – so, dass kurze Beeps andere Apps möglichst nur "ducken"
-  useEffect(() => {
-    Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: false,
-      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DUCK_OTHERS,
-      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DUCK_OTHERS,
-      shouldDuckAndroid: true,
-    }).catch(() => {
-      // Audio-Setup-Fehler ignorieren, damit das Workout trotzdem läuft
-    });
-  }, []);
-
-  const safePlayBeep = useCallback(async () => {
+  const safePlayStartSignal = useCallback(async () => {
     if (!enableBeep) return;
-    await playBeep();
+    await playDoubleBeep();
+  }, [enableBeep, playDoubleBeep]);
+
+  const safeSpeakPraise = useCallback(async () => {
+    if (!enableBeep) return;
+
+    const praises = [
+      'Geschafft!',
+      'Großartig!',
+      'Fertig!',
+      'Klasse!',
+      'Mega!',
+      'Stark! Weiter so!',
+      'Sehr gut!',
+    ] as const;
+    // Zufällig, aber nicht direkt wiederholen
+    let next = praises[Math.floor(Math.random() * praises.length)];
+    if (praises.length > 1 && next === lastPraiseRef.current) {
+      next = praises[(praises.indexOf(next) + 1) % praises.length];
+    }
+    lastPraiseRef.current = next;
+    lastPraiseAtRef.current = Date.now();
+
+    try {
+      // etwas mehr Energie: schneller + höhere Tonlage (kleine Zufalls-Variation)
+      const rate = 1.12 + Math.random() * 0.06; // 1.12..1.18
+      const pitch = 1.18 + Math.random() * 0.12; // 1.18..1.30
+      Speech.speak(next, { language: 'de-DE', rate, pitch });
+    } catch {
+      // ignore
+    }
   }, [enableBeep]);
+
+  const triggerSilentFinishSignal = useCallback(() => {
+    // Nur wenn Beeps & Ansagen aus sind
+    if (enableBeepRef.current) return;
+    setSilentFinishSignalId(Date.now());
+  }, []);
 
   const getCurrentExercise = useCallback((): WorkoutExercise | null => {
     if (!workout || workout.exercises.length === 0) return null;
-    return workout.exercises[currentExerciseIndex];
-  }, [workout, currentExerciseIndex]);
+    return normalizeExercise(workout.exercises[currentExerciseIndex]);
+  }, [workout, currentExerciseIndex, normalizeExercise]);
 
   const moveToNextExercise = useCallback(() => {
     if (!workout) return;
@@ -121,16 +275,21 @@ export function useRunWorkout({
     }
 
     setWorkoutState('getReady');
-    setTimeRemaining(GET_READY_DURATION);
+    setTimeRemaining(exerciseTransitionSeconds);
     setElapsedTime(0);
-  }, [currentRound, currentExerciseIndex, workout]);
+  }, [currentRound, currentExerciseIndex, workout, exerciseTransitionSeconds]);
 
   const handlePhaseComplete = useCallback(async () => {
+    if (phaseCompleteInFlightRef.current) return;
+    phaseCompleteInFlightRef.current = true;
+
+    try {
     if (workoutState === 'getReady') {
       const exercise = getCurrentExercise();
       if (!exercise) return;
 
-      await safePlayBeep();
+      // Start der Übung: 2x Beep
+      await safePlayStartSignal();
 
       if (exercise.type === 'duration') {
         setTimeRemaining(exercise.amount);
@@ -140,18 +299,25 @@ export function useRunWorkout({
       }
       setWorkoutState('exercise');
     } else if (workoutState === 'exercise') {
-      await safePlayBeep();
+      // Ende der Übung: zufälliges Lob (TTS)
+      await safeSpeakPraise();
+      triggerSilentFinishSignal();
       moveToNextExercise();
     }
-  }, [workoutState, getCurrentExercise, moveToNextExercise, safePlayBeep]);
+    } finally {
+      phaseCompleteInFlightRef.current = false;
+    }
+  }, [workoutState, getCurrentExercise, moveToNextExercise, safeSpeakPraise, safePlayStartSignal, triggerSilentFinishSignal]);
 
   const handleExerciseComplete = useCallback(async () => {
     const exercise = getCurrentExercise();
     if (exercise && exercise.type === 'reps') {
-      await safePlayBeep();
+      // Ende der Übung: zufälliges Lob (TTS)
+      await safeSpeakPraise();
+      triggerSilentFinishSignal();
       moveToNextExercise();
     }
-  }, [getCurrentExercise, moveToNextExercise, safePlayBeep]);
+  }, [getCurrentExercise, moveToNextExercise, safeSpeakPraise, triggerSilentFinishSignal]);
 
   const handleSkip = useCallback(() => {
     moveToNextExercise();
@@ -170,37 +336,54 @@ export function useRunWorkout({
     const exercise = getCurrentExercise();
     if (!exercise) return;
 
+    // Safety: altes Interval immer stoppen (auch wenn cleanup aus irgendeinem Grund nicht lief)
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
     if (workoutState === 'getReady') {
       intervalRef.current = setInterval(() => {
         setTimeRemaining((prev) => {
-          if ([3, 2, 1].includes(prev) && enableBeep) playBeep();
-          if (prev <= 1) {
-            handlePhaseComplete();
+          const safePrev = Number.isFinite(prev) ? prev : 1;
+          if (safePrev <= 1) {
+            // Interval sofort stoppen, damit der Phasenwechsel nicht mehrfach getriggert wird
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
+            void handlePhaseComplete();
             return 0;
           }
-          return prev - 1;
+          return safePrev - 1;
         });
       }, 1000);
     } else if (workoutState === 'exercise' && exercise.type === 'duration') {
       intervalRef.current = setInterval(() => {
         setTimeRemaining((prev) => {
-          if ([3, 2, 1].includes(prev) && enableBeep) playBeep();
-          if (prev <= 1) {
-            handlePhaseComplete();
+          const safePrev = Number.isFinite(prev) ? prev : 1;
+          if (safePrev <= 1) {
+            // Interval sofort stoppen, damit der Phasenwechsel nicht mehrfach getriggert wird
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
+            void handlePhaseComplete();
             return 0;
           }
-          return prev - 1;
+          return safePrev - 1;
         });
       }, 1000);
     } else if (workoutState === 'exercise' && exercise.type === 'reps') {
       intervalRef.current = setInterval(() => {
-        setElapsedTime((prev) => prev + 1);
+        setElapsedTime((prev) => (Number.isFinite(prev) ? prev + 1 : 1));
       }, 1000);
     }
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [
@@ -209,17 +392,66 @@ export function useRunWorkout({
     workoutState,
     getCurrentExercise,
     handlePhaseComplete,
-    enableBeep,
+    currentExerciseIndex,
   ]);
 
-  // Cleanup beim Unmount
+  // Text-to-Speech: Name der nächsten Übung ansagen (einmal pro getReady-Phase)
   useEffect(() => {
+    if (!workout) return;
+    if (isPaused) return;
+    if (!enableBeep) return;
+    if (workoutState !== 'getReady') return;
+
+    const exercise = getCurrentExercise();
+    if (!exercise) return;
+
+    const key = `${workout.id}:${currentRound}:${currentExerciseIndex}:${workoutState}`;
+    if (lastSpokenKeyRef.current === key) return;
+    lastSpokenKeyRef.current = key;
+
+    // Bestehende geplante Ansage abbrechen
+    if (nextSpeakTimeoutRef.current) {
+      clearTimeout(nextSpeakTimeoutRef.current);
+      nextSpeakTimeoutRef.current = null;
+    }
+
+    try {
+      // 5s Abstand nach dem Lob am Übungsende, damit sich die Ansagen nicht überlappen
+      const now = Date.now();
+      const elapsedSincePraise = lastPraiseAtRef.current ? now - lastPraiseAtRef.current : Number.POSITIVE_INFINITY;
+      const delayMs = Math.max(0, 5000 - elapsedSincePraise);
+
+      nextSpeakTimeoutRef.current = setTimeout(() => {
+        // Nur sprechen, wenn wir noch im passenden Zustand sind
+        if (!enableBeepRef.current) return;
+        if (isPausedRef.current) return;
+        if (workoutStateRef.current !== 'getReady') return;
+        if (timeRemainingRef.current <= 1) return; // kurz vor Phasenwechsel -> skip
+
+        const rate = 1.05 + Math.random() * 0.05; // 1.05..1.10
+        const pitch = 1.10 + Math.random() * 0.10; // 1.10..1.20
+        try {
+          const lang = detectExerciseTitleLanguageTag(exercise.name);
+          const text =
+            lang === 'en-US'
+              ? `Next up: ${exercise.name}!`
+              : `Nächste Übung: ${exercise.name}!`;
+          Speech.speak(text, { language: lang, rate, pitch });
+        } catch {
+          // ignore
+        }
+      }, delayMs);
+    } catch {
+      // ignore
+    }
+
     return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
+      if (nextSpeakTimeoutRef.current) {
+        clearTimeout(nextSpeakTimeoutRef.current);
+        nextSpeakTimeoutRef.current = null;
       }
     };
-  }, []);
+  }, [workout, isPaused, enableBeep, workoutState, getCurrentExercise, currentRound, currentExerciseIndex]);
 
   return {
     workout,
@@ -230,6 +462,8 @@ export function useRunWorkout({
     currentExercise: getCurrentExercise(),
     timeRemaining,
     elapsedTime,
+    sessionDurationMinutes: Math.max(1, Math.round((Date.now() - sessionStartRef.current) / 60000)),
+    silentFinishSignalId,
     isPaused,
     setIsPaused,
     handlePhaseComplete,

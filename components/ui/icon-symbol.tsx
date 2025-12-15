@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -20,6 +21,7 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'figure.run': 'directions-run',
   'calendar': 'calendar-today',
+  'person.fill': 'person',
 } as IconMapping;
 
 /**

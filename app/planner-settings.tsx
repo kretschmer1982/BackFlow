@@ -2,14 +2,16 @@ import { Workout } from '@/types/interfaces';
 import {
     ensureNotificationPermissions,
     rescheduleTrainingReminders,
-    scheduleTestReminderInSeconds,
 } from '@/utils/notifications';
 import {
     PlannerSettings,
     TrainingReminderTimeOfDay,
+    deletePlannedWorkout,
+    getPlannedWorkouts,
     getPlannerSettings,
     getSettings,
     getWorkouts,
+    savePlannedWorkout,
     updatePlannerSettings,
     updateSettings,
 } from '@/utils/storage';
@@ -17,10 +19,19 @@ import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, SafeAreaView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Modal, Pressable, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Mo..So
+
+const toLocalDateKey = (d: Date) => {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+const toUtcDateKey = (d: Date) => d.toISOString().slice(0, 10);
 
 function humanTimeLabel(t: TrainingReminderTimeOfDay) {
   switch (t) {
@@ -40,6 +51,7 @@ export default function PlannerSettingsScreen() {
 
   const [schedule, setSchedule] = useState<PlannerSettings['defaultSchedule']>({});
   const [selectingDay, setSelectingDay] = useState<number | null>(null);
+  const [tempSelectedIds, setTempSelectedIds] = useState<string[]>([]);
 
   const [reminderEnabled, setReminderEnabled] = useState<boolean>(false);
   const [reminderTime, setReminderTime] = useState<TrainingReminderTimeOfDay>('morning');
@@ -65,24 +77,114 @@ export default function PlannerSettingsScreen() {
     }, [load])
   );
 
-  const toggleDay = (dayIndex: number, value: boolean) => {
-    setSchedule((prev) => {
-      const next = { ...prev };
-      if (!value) {
-        next[dayIndex] = null;
-        return next;
+  const clearConflictingOverridesForWeekday = useCallback(
+    async (weekday: number) => {
+      // Wenn es gespeicherte Overrides gibt, die den Wochenplan blockieren,
+      // räumen wir sie auf:
+      // - Pause-Overrides: '' (oder null/undefined aus alten Bugs)
+      // - ungültige Workout-IDs (Workout wurde gelöscht)
+      const planned = await getPlannedWorkouts();
+      const validWorkoutIds = new Set(workouts.map((w) => w.id));
+      const now = new Date();
+      const horizonDays = 120;
+
+      const deletes: string[] = [];
+      for (let i = 0; i < horizonDays; i++) {
+        const d = new Date(now);
+        d.setDate(now.getDate() + i);
+        if (d.getDay() !== weekday) continue;
+
+        const localKey = toLocalDateKey(d);
+        const utcKey = toUtcDateKey(d);
+
+        const localVal: any = planned[localKey];
+        const utcVal: any = planned[utcKey];
+
+      const isInvalidValue = (v: any) =>
+        v === '' ||
+        v === null ||
+        v === undefined ||
+        (typeof v === 'string' && v !== '' && !validWorkoutIds.has(v)) ||
+        (typeof v === 'object' && v && typeof v.workoutId === 'string' && v.workoutId !== '' && !validWorkoutIds.has(v.workoutId));
+
+        // single values
+        if (localVal !== undefined && !Array.isArray(localVal) && isInvalidValue(localVal)) deletes.push(localKey);
+        if (utcVal !== undefined && !Array.isArray(utcVal) && isInvalidValue(utcVal)) deletes.push(utcKey);
+
+        // arrays: filter invalid entries; if empty -> delete key, else write back
+        const filterArray = (arr: any[]) => arr.filter((x) => !isInvalidValue(x));
+
+        if (Array.isArray(localVal)) {
+          const next = filterArray(localVal);
+          if (next.length === 0) deletes.push(localKey);
+          else if (next.length !== localVal.length) {
+            // write back filtered
+            await savePlannedWorkout(localKey, next);
+          }
+        }
+        if (Array.isArray(utcVal)) {
+          const next = filterArray(utcVal);
+          if (next.length === 0) deletes.push(utcKey);
+          else if (next.length !== utcVal.length) {
+            await savePlannedWorkout(utcKey, next);
+          }
+        }
       }
-      // enabled
-      if (!next[dayIndex]) {
-        next[dayIndex] = workouts.length > 0 ? workouts[0].id : null;
+
+      const unique = Array.from(new Set(deletes));
+      await Promise.all(unique.map((k) => deletePlannedWorkout(k)));
+    },
+    [workouts]
+  );
+
+  const toggleDay = async (dayIndex: number, value: boolean) => {
+    if (value && workouts.length === 0) {
+      Alert.alert('Keine Workouts', 'Bitte erst ein Workout anlegen, bevor du Standard-Trainingstage setzt.');
+      return;
+    }
+
+    const currentIds = Array.isArray(schedule[dayIndex]) ? schedule[dayIndex] : [];
+    const nextIds = value ? (currentIds.length > 0 ? currentIds : workouts[0]?.id ? [workouts[0].id] : []) : [];
+    setSchedule((prev) => ({ ...prev, [dayIndex]: nextIds }));
+
+    // Auto-Save (damit es sofort im Planner sichtbar ist)
+    await updatePlannerSettings({ defaultSchedule: { [dayIndex]: nextIds } as any });
+    if (value && nextIds.length > 0) {
+      await clearConflictingOverridesForWeekday(dayIndex);
+    }
+    try {
+      if (reminderEnabled) {
+        await rescheduleTrainingReminders();
       }
-      return next;
-    });
+    } catch {
+      // ignore
+    }
   };
 
-  const selectWorkout = (dayIndex: number, workoutId: string) => {
-    setSchedule((prev) => ({ ...prev, [dayIndex]: workoutId }));
+  const openMultiPicker = (dayIndex: number) => {
+    const current = Array.isArray(schedule[dayIndex]) ? schedule[dayIndex] : [];
+    setTempSelectedIds(current);
+    setSelectingDay(dayIndex);
+  };
+
+  const applyMultiPicker = async () => {
+    if (selectingDay === null) return;
+    const dayIndex = selectingDay;
+    const nextIds = tempSelectedIds.slice(0, 3);
+    setSchedule((prev) => ({ ...prev, [dayIndex]: nextIds }));
     setSelectingDay(null);
+
+    await updatePlannerSettings({ defaultSchedule: { [dayIndex]: nextIds } as any });
+    if (nextIds.length > 0) {
+      await clearConflictingOverridesForWeekday(dayIndex);
+    }
+    try {
+      if (reminderEnabled) {
+        await rescheduleTrainingReminders();
+      }
+    } catch {
+      // ignore
+    }
   };
 
   const handleToggleReminder = async (value: boolean) => {
@@ -149,7 +251,8 @@ export default function PlannerSettingsScreen() {
   const normalizedSchedule = useMemo(() => {
     const next: PlannerSettings['defaultSchedule'] = { ...schedule };
     for (let d = 0; d <= 6; d++) {
-      if (next[d] === undefined) next[d] = null;
+      if (next[d] === undefined || !Array.isArray(next[d])) next[d] = [];
+      next[d] = next[d].filter((x) => typeof x === 'string' && x.trim() !== '').slice(0, 3);
     }
     return next;
   }, [schedule]);
@@ -170,7 +273,7 @@ export default function PlannerSettingsScreen() {
       <Modal visible={true} transparent animationType="fade">
         <Pressable style={styles.overlay} onPress={() => setSelectingDay(null)}>
           <View style={styles.pickerContainer}>
-            <Text style={styles.pickerTitle}>Workout wählen</Text>
+            <Text style={styles.pickerTitle}>Workouts wählen (max. 3)</Text>
             {workouts.length === 0 ? (
               <Text style={styles.pickerEmpty}>Keine Workouts vorhanden.</Text>
             ) : (
@@ -180,12 +283,29 @@ export default function PlannerSettingsScreen() {
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={styles.pickerItem}
-                    onPress={() => selectWorkout(selectingDay, item.id)}>
-                    <Text style={styles.pickerItemText}>{item.name}</Text>
+                    onPress={() => {
+                      setTempSelectedIds((prev) => {
+                        const has = prev.includes(item.id);
+                        if (has) return prev.filter((x) => x !== item.id);
+                        if (prev.length >= 3) return prev; // limit
+                        return [...prev, item.id];
+                      });
+                    }}>
+                    <Text style={styles.pickerItemText}>
+                      {tempSelectedIds.includes(item.id) ? '✓ ' : ''}{item.name}
+                    </Text>
                   </TouchableOpacity>
                 )}
               />
             )}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+              <TouchableOpacity style={[styles.cancelBtn, { flex: 1 }]} onPress={() => setSelectingDay(null)} activeOpacity={0.85}>
+                <Text style={styles.cancelBtnText}>Abbrechen</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.saveBtn, { flex: 1 }]} onPress={applyMultiPicker} activeOpacity={0.85}>
+                <Text style={styles.saveBtnText}>Übernehmen</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Pressable>
       </Modal>
@@ -198,9 +318,6 @@ export default function PlannerSettingsScreen() {
 
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.8}>
-            <Text style={styles.backButtonText}>{'< Zurück'}</Text>
-          </TouchableOpacity>
           <TouchableOpacity onPress={handleSave} style={styles.saveHeaderButton} activeOpacity={0.85}>
             <Text style={styles.saveHeaderButtonText}>Speichern</Text>
           </TouchableOpacity>
@@ -214,26 +331,32 @@ export default function PlannerSettingsScreen() {
           <Text style={styles.sectionHeader}>Wochentage</Text>
 
           {DISPLAY_ORDER.map((dayIndex) => {
-            const workoutId = normalizedSchedule[dayIndex];
-            const enabled = !!workoutId;
-            const selected = workouts.find((w) => w.id === workoutId);
+            const ids = normalizedSchedule[dayIndex] || [];
+            const enabled = ids.length > 0;
+            const selectedNames = ids
+              .map((id) => workouts.find((w) => w.id === id)?.name)
+              .filter(Boolean) as string[];
 
             return (
               <View key={dayIndex} style={styles.dayRow}>
                 <Text style={styles.dayLabel}>{DAYS[dayIndex]}</Text>
                 <Switch
                   value={enabled}
-                  onValueChange={(val) => toggleDay(dayIndex, val)}
+                  onValueChange={(val) => void toggleDay(dayIndex, val)}
                   trackColor={{ false: '#3a3a3a', true: '#4ade80' }}
                   thumbColor={'#ffffff'}
                 />
                 <TouchableOpacity
                   style={[styles.workoutSelect, !enabled && styles.workoutSelectDisabled]}
                   disabled={!enabled}
-                  onPress={() => setSelectingDay(dayIndex)}
+                  onPress={() => openMultiPicker(dayIndex)}
                   activeOpacity={0.85}>
                   <Text style={styles.workoutSelectText} numberOfLines={1}>
-                    {selected ? selected.name : workouts.length > 0 ? 'Workout wählen' : 'Keine Workouts'}
+                    {selectedNames.length > 0
+                      ? selectedNames.join(', ')
+                      : workouts.length > 0
+                        ? 'Workouts wählen'
+                        : 'Keine Workouts'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -286,24 +409,6 @@ export default function PlannerSettingsScreen() {
               })}
             </View>
 
-            <TouchableOpacity
-              style={styles.testButton}
-              onPress={async () => {
-                try {
-                  await scheduleTestReminderInSeconds(10);
-                } catch {
-                  Alert.alert(
-                    'Hinweis',
-                    Constants.appOwnership === 'expo'
-                      ? 'In Expo Go sind Benachrichtigungen auf Android nur eingeschränkt testbar. Für einen zuverlässigen Test bitte einen Development Build nutzen.'
-                      : 'Test-Benachrichtigung konnte nicht gesendet werden.'
-                  );
-                }
-              }}
-              activeOpacity={0.85}>
-              <Text style={styles.testButtonText}>Test-Benachrichtigung (10s)</Text>
-            </TouchableOpacity>
-
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
               <TouchableOpacity style={styles.cancelBtn} onPress={closeReminderModal} activeOpacity={0.85}>
                 <Text style={styles.cancelBtnText}>Abbrechen</Text>
@@ -325,9 +430,7 @@ export default function PlannerSettingsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  backButton: { paddingVertical: 8, paddingHorizontal: 4 },
-  backButtonText: { color: '#4ade80', fontSize: 16, fontWeight: '700' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
   saveHeaderButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -382,23 +485,34 @@ const styles = StyleSheet.create({
   timeChipText: { fontSize: 12, color: '#e5e7eb', fontWeight: '700' },
   timeChipTextSelected: { color: '#111827' },
 
-  testButton: {
-    marginTop: 10,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#2a2a2a',
-    borderWidth: 1,
-    borderColor: '#333333',
-    alignItems: 'center',
-  },
-  testButtonText: { color: '#4ade80', fontSize: 13, fontWeight: '800' },
-
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 30 },
   pickerContainer: { backgroundColor: '#2a2a2a', borderRadius: 16, padding: 18, maxHeight: '70%' },
   pickerTitle: { color: '#ffffff', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 12 },
   pickerEmpty: { color: '#aaaaaa', textAlign: 'center', marginVertical: 12 },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#3a3a3a' },
   pickerItemText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+  },
+  cancelBtnText: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
+
+  saveBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#4ade80',
+    borderWidth: 1,
+    borderColor: '#22c55e',
+    alignItems: 'center',
+  },
+  saveBtnText: { color: '#111827', fontSize: 14, fontWeight: '900' },
 
   reminderModal: { backgroundColor: '#2a2a2a', borderRadius: 16, padding: 18, maxHeight: '70%' },
 });

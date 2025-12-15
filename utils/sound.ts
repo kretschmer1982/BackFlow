@@ -1,24 +1,59 @@
-import { Audio } from 'expo-av';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
+import { useCallback, useEffect, useRef } from 'react';
 
-let loadedBeep: Audio.Sound | null = null;
-let lastPlay = 0;
+const BEEP_URL = 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg';
+const CHECK_URL = 'https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg';
 
-export async function playBeep() {
-  try {
-    // Kein mehrfaches Play innerhalb 300ms
-    if(Date.now() - lastPlay < 300) return;
-    lastPlay = Date.now();
-    if (!loadedBeep) {
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg' },
-        { shouldPlay: false, volume: 0.4 }
-      );
-      loadedBeep = sound;
+export function useBeepPlayer() {
+  const player = useAudioPlayer(BEEP_URL);
+  const checkPlayer = useAudioPlayer(CHECK_URL);
+  const lastBeepRef = useRef(0);
+  const lastCheckRef = useRef(0);
+
+  // Globaler Audio-Modus (Ducking / Silent Mode)
+  useEffect(() => {
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      interruptionMode: 'duckOthers',
+    }).catch(() => {
+      // ignore
+    });
+  }, []);
+
+  const playBeep = useCallback(async () => {
+    // Kein mehrfaches Play innerhalb kurzer Zeit (gegen Doppel-Trigger)
+    const now = Date.now();
+    if (now - lastBeepRef.current < 80) return;
+    lastBeepRef.current = now;
+
+    try {
+      player.seekTo(0);
+      player.play();
+    } catch {
+      // ignore
     }
-    if (loadedBeep) {
-      await loadedBeep.replayAsync();
+  }, [player]);
+
+  const playDoubleBeep = useCallback(async () => {
+    // 2 kurze Beeps als Start-Signal
+    await playBeep();
+    await new Promise((r) => setTimeout(r, 180));
+    await playBeep();
+  }, [playBeep]);
+
+  const playCheck = useCallback(async () => {
+    // Anderer Ton als "Übung fertig"
+    const now = Date.now();
+    if (now - lastCheckRef.current < 120) return;
+    lastCheckRef.current = now;
+
+    try {
+      checkPlayer.seekTo(0);
+      checkPlayer.play();
+    } catch {
+      // ignore
     }
-  } catch (e) {
-    loadedBeep = null; // Reset/reload bei Fehler
-  }
+  }, [checkPlayer]);
+
+  return { playBeep, playDoubleBeep, playCheck };
 }
