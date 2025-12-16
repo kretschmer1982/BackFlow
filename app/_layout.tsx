@@ -3,11 +3,19 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { useEffect } from 'react';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { rescheduleTrainingReminders, useNotificationObserver } from '@/utils/notifications';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  useNotificationObserver();
+
+  useEffect(() => {
+    rescheduleTrainingReminders();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

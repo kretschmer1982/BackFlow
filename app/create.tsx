@@ -51,7 +51,7 @@ export default function CreateWorkoutScreen() {
   const [workoutName, setWorkoutName] = useState('');
   const [workoutTotalMinutes, setWorkoutTotalMinutes] = useState('');
   const [isTitleEditable, setIsTitleEditable] = useState(false);
-  const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
+  const [backgroundColor, setBackgroundColor] = useState<string>('#2a2a2a');
   const [selectedExercises, setSelectedExercises] =
     useState<WorkoutExercise[]>([]);
   const [allExercises, setAllExercises] = useState<Exercise[]>(EXERCISES);
@@ -59,10 +59,20 @@ export default function CreateWorkoutScreen() {
   const [exerciseAmountInputs, setExerciseAmountInputs] =
     useState<Map<string, string>>(new Map());
   const [infoExercise, setInfoExercise] = useState<Exercise | null>(null);
+  
   const isDarkBackground = useMemo(
     () => isDarkColor(backgroundColor),
     [backgroundColor]
   );
+  
+  // Dynamische Farben
+  const textColor = isDarkBackground ? '#ffffff' : '#111827';
+  const subTextColor = isDarkBackground ? '#aaaaaa' : '#4b5563';
+  const cardBg = isDarkBackground ? '#2a2a2a' : '#ffffff';
+  const cardBorder = isDarkBackground ? '#333333' : '#d1d5db';
+  const inputBg = isDarkBackground ? '#151515' : '#f9fafb';
+  const inputBorder = isDarkBackground ? '#333333' : '#d1d5db';
+  const placeholderColor = isDarkBackground ? '#666666' : '#9ca3af';
 
   const createExerciseInstance = (exercise: Exercise): WorkoutExercise => ({
     ...exercise,
@@ -219,13 +229,14 @@ export default function CreateWorkoutScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar style="light" />
+      <StatusBar style={isDarkBackground ? 'light' : 'dark'} />
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <TextInput
             ref={titleInputRef}
             style={[
               styles.titleInput,
+              { color: textColor },
               isTitleEditable &&
                 (isDarkBackground
                   ? styles.titleInputEditingDark
@@ -236,7 +247,7 @@ export default function CreateWorkoutScreen() {
             editable={isTitleEditable}
             onBlur={() => setIsTitleEditable(false)}
             placeholder={workoutId ? 'Workoutname' : 'Neues Workout'}
-            placeholderTextColor="#666666"
+            placeholderTextColor={placeholderColor}
             testID="create-workout-title-input"
           />
           <Pressable
@@ -267,14 +278,14 @@ export default function CreateWorkoutScreen() {
         </View>
 
         <View style={styles.totalMinutesRow}>
-          <Text style={styles.totalMinutesLabel}>Gesamtzeit (Min.)</Text>
+          <Text style={[styles.totalMinutesLabel, { color: subTextColor }]}>Gesamtzeit (Min.)</Text>
           <TextInput
             value={workoutTotalMinutes}
             onChangeText={(t) => setWorkoutTotalMinutes(t.replace(/[^0-9]/g, ''))}
             keyboardType="numeric"
             placeholder="z.B. 25"
-            placeholderTextColor="#666666"
-            style={styles.totalMinutesInput}
+            placeholderTextColor={placeholderColor}
+            style={[styles.totalMinutesInput, { backgroundColor: inputBg, borderColor: inputBorder, color: textColor }]}
           />
         </View>
       </View>
@@ -286,22 +297,22 @@ export default function CreateWorkoutScreen() {
             contentContainerStyle={styles.leftColumnContent}>
             <View style={styles.section}>
               <View style={styles.availableExercisesContainer}>
-                <Text style={styles.availableExercisesTitle}>
+                <Text style={[styles.availableExercisesTitle, { color: textColor }]}>
                   Weitere Übungen
                 </Text>
-                <Text style={styles.availableExercisesHint}>
+                <Text style={[styles.availableExercisesHint, { color: subTextColor }]}>
                   Tippe auf eine Übung, um sie dem Workout hinzuzufügen. Über
                   das Info-Symbol siehst du Details und Bild.
                 </Text>
 
                 {allExercises.map((exercise) => (
-                  <View key={exercise.name} style={styles.exerciseCard}>
+                  <View key={exercise.name} style={[styles.exerciseCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
                     <View style={styles.exerciseHeader}>
                       <Pressable
                         style={styles.exerciseHeaderMain}
                         onPress={() => handleAddExerciseFromLibrary(exercise)}>
                         <Text
-                          style={styles.exerciseName}
+                          style={[styles.exerciseName, { color: textColor }]}
                           numberOfLines={2}
                           ellipsizeMode="tail">
                           {exercise.name}
@@ -310,7 +321,7 @@ export default function CreateWorkoutScreen() {
                       <Pressable
                         style={styles.infoButton}
                         onPress={() => setInfoExercise(exercise)}>
-                        <Text style={styles.infoIcon}>i</Text>
+                        <Text style={[styles.infoIcon, { borderColor: textColor, color: textColor }]}>i</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -330,7 +341,7 @@ export default function CreateWorkoutScreen() {
           </ScrollView>
 
           <View style={styles.rightColumn}>
-            <Text style={styles.rightColumnTitle}>Dein Workout</Text>
+            <Text style={[styles.rightColumnTitle, { color: textColor }]}>Dein Workout</Text>
             <DraggableFlatList
               data={selectedExercises}
               keyExtractor={(item) =>
@@ -356,6 +367,7 @@ export default function CreateWorkoutScreen() {
                   <View
                     style={[
                       styles.exerciseCard,
+                      { backgroundColor: cardBg, borderColor: cardBorder },
                       isActive && styles.exerciseCardActive,
                     ]}>
                     <TouchableOpacity
@@ -373,15 +385,15 @@ export default function CreateWorkoutScreen() {
                       testID={`create-selected-exercise-${key}`}>
                       <View style={styles.selectedContentRow}>
                         <View style={styles.selectedTextColumn}>
-                          <Text style={styles.selectedExerciseName}>
+                          <Text style={[styles.selectedExerciseName, { color: textColor }]}>
                             {item.name}
                           </Text>
                           <View style={styles.amountRow}>
-                            <Text style={styles.amountUnitText}>
+                            <Text style={[styles.amountUnitText, { color: textColor }]}>
                               {item.type === 'duration' ? 'Sek' : 'Anz.'}
                             </Text>
                             <TextInput
-                              style={styles.amountInlineInput}
+                              style={[styles.amountInlineInput, { backgroundColor: inputBg, borderColor: inputBorder, color: textColor }]}
                               value={amountValue}
                               onChangeText={(text) =>
                                 updateExerciseAmountInput(key, text)
@@ -390,7 +402,7 @@ export default function CreateWorkoutScreen() {
                               placeholder={
                                 item.amount ? item.amount.toString() : undefined
                               }
-                              placeholderTextColor="#666666"
+                              placeholderTextColor={placeholderColor}
                               testID={`create-exercise-amount-input-${key}`}
                             />
                           </View>
@@ -434,8 +446,8 @@ export default function CreateWorkoutScreen() {
           visible={!!infoExercise}
           onRequestClose={() => setInfoExercise(null)}>
           <View style={styles.infoModalOverlay}>
-            <View style={styles.infoModalCard}>
-              <Text style={styles.infoModalTitle}>{infoExercise!.name}</Text>
+            <View style={[styles.infoModalCard, { backgroundColor: isDarkBackground ? '#111827' : '#ffffff', borderColor: '#4ade80' }]}>
+              <Text style={[styles.infoModalTitle, { color: isDarkBackground ? '#ffffff' : '#111827' }]}>{infoExercise!.name}</Text>
               <Image
                 source={getImageSource(
                   infoExercise!.name,
@@ -450,7 +462,7 @@ export default function CreateWorkoutScreen() {
                   : `${infoExercise!.amount ?? 0} Wiederholungen`}
               </Text>
               {infoExercise!.instructions ? (
-                <Text style={styles.infoModalText}>
+                <Text style={[styles.infoModalText, { color: isDarkBackground ? '#e5e7eb' : '#374151' }]}>
                   {infoExercise!.instructions}
                 </Text>
               ) : null}
@@ -471,7 +483,6 @@ export default function CreateWorkoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
   },
   header: {
     paddingHorizontal: 24,
@@ -492,7 +503,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   totalMinutesLabel: {
-    color: '#aaaaaa',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -502,9 +512,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#333333',
-    backgroundColor: '#151515',
-    color: '#ffffff',
     fontSize: 14,
     fontWeight: '800',
     textAlign: 'center',
@@ -513,7 +520,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#ffffff',
   },
   titleInputEditingDark: {
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -565,7 +571,6 @@ const styles = StyleSheet.create({
   rightColumnTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
     marginBottom: 12,
     marginTop: 4,
   },
@@ -591,11 +596,9 @@ const styles = StyleSheet.create({
     borderColor: '#333333',
   },
   exerciseCard: {
-    backgroundColor: '#2a2a2a',
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333333',
     overflow: 'hidden',
     minHeight: 56,
   },
@@ -635,7 +638,6 @@ const styles = StyleSheet.create({
   exerciseName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
   },
   exerciseType: {
     fontSize: 14,
@@ -677,10 +679,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: '#1a1a1a',
     borderWidth: 1,
-    borderColor: '#333333',
-    color: '#ffffff',
     fontSize: 14,
     textAlign: 'center',
   },
@@ -804,7 +803,6 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
   },
   exerciseCardActive: {
-    backgroundColor: '#3a3a3a',
     borderColor: '#4ade80',
   },
   removeExerciseButton: {
@@ -823,12 +821,10 @@ const styles = StyleSheet.create({
   availableExercisesTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
     marginBottom: 4,
   },
   availableExercisesHint: {
     fontSize: 14,
-    color: '#aaaaaa',
     marginBottom: 12,
   },
   exerciseHeaderMain: {
@@ -851,7 +847,6 @@ const styles = StyleSheet.create({
   selectedExerciseName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
   },
   amountRow: {
     flexDirection: 'row',
@@ -863,7 +858,6 @@ const styles = StyleSheet.create({
   amountUnitText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
   },
   newExerciseEntryContainer: {
     marginTop: 16,
@@ -882,12 +876,10 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: '#ffffff',
     textAlign: 'center',
     textAlignVertical: 'center',
     fontSize: 12,
     fontWeight: '700',
-    color: '#ffffff',
     opacity: 0.9,
   },
   exerciseDescriptionContainer: {
@@ -912,16 +904,13 @@ const styles = StyleSheet.create({
   infoModalCard: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#111827',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#4ade80',
   },
   infoModalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#ffffff',
     marginBottom: 12,
   },
   infoModalImage: {
@@ -934,12 +923,11 @@ const styles = StyleSheet.create({
   infoModalMeta: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#a7f3d0',
+    color: '#4ade80',
     marginBottom: 8,
   },
   infoModalText: {
     fontSize: 14,
-    color: '#e5e7eb',
     lineHeight: 20,
     marginBottom: 16,
   },

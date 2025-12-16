@@ -29,8 +29,8 @@ export interface BackflowSettings {
 
 // Standard-Einstellungen
 const DEFAULT_SETTINGS: BackflowSettings = {
-  // Standard: komplett dunkel/schwarz
-  appBackgroundColor: '#000000',
+  // Standard: Dark Mode (grau)
+  appBackgroundColor: '#2a2a2a',
   trainingReminderEnabled: false,
   trainingReminderTimeOfDay: 'morning',
   trainingReminderHasScheduled: false,

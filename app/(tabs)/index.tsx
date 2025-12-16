@@ -68,12 +68,12 @@ function getWorkoutCardColors(backgroundColor: string) {
     // Dunkler Hintergrund: Karten leicht aufhellen
     const cardBackground = blendHexColors(backgroundColor, '#ffffff', 0.08);
     const cardBorder = blendHexColors(backgroundColor, '#ffffff', 0.16);
-    return { cardBackground, cardBorder };
+    return { cardBackground, cardBorder, textColor: '#ffffff', subtextColor: '#aaaaaa' };
   } else {
-    // Heller Hintergrund: Karten leicht abdunkeln
-    const cardBackground = blendHexColors(backgroundColor, '#000000', 0.08);
-    const cardBorder = blendHexColors(backgroundColor, '#000000', 0.16);
-    return { cardBackground, cardBorder };
+    // Heller Hintergrund
+    const cardBackground = blendHexColors(backgroundColor, '#000000', 0.05); 
+    const cardBorder = blendHexColors(backgroundColor, '#000000', 0.1);
+    return { cardBackground, cardBorder, textColor: '#111827', subtextColor: '#4b5563' };
   }
 }
 
@@ -81,7 +81,7 @@ export default function WorkoutScreen() {
   const router = useRouter();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [showFabMenu, setShowFabMenu] = useState(false);
-  const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
+  const [backgroundColor, setBackgroundColor] = useState<string>('#2a2a2a');
   const [planned, setPlanned] = useState<Record<string, any>>({});
   const [plannerSettings, setPlannerSettings] = useState<{ defaultSchedule: { [day: number]: string[] } }>({
     defaultSchedule: {},
@@ -128,6 +128,22 @@ export default function WorkoutScreen() {
       })();
     }, [loadWorkouts, loadSettings])
   );
+  
+  const { r, g, b } = parseHexColor(backgroundColor);
+  const bgLuminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const isLightBg = bgLuminance > 0.7;
+  const statusBarStyle = isLightBg ? 'dark' : 'light';
+  
+  // Farben basierend auf Hintergrundmodus
+  const mainTitleColor = isLightBg ? '#111827' : '#ffffff';
+  const subTitleColor = isLightBg ? '#4b5563' : '#aaaaaa';
+  const emptyStateTextColor = isLightBg ? '#111827' : '#ffffff';
+  const emptyStateSubtextColor = isLightBg ? '#4b5563' : '#aaaaaa';
+  
+  // Button Farben für Light Mode anpassen
+  const buttonBgColor = isLightBg ? '#e5e7eb' : '#3a3a3a';
+  const buttonBorderColor = isLightBg ? '#d1d5db' : '#555555';
+  const buttonIconColor = isLightBg ? '#111827' : '#ffffff';
 
   const todayPlanned = useMemo(() => {
     const today = new Date();
@@ -213,7 +229,7 @@ export default function WorkoutScreen() {
   };
 
   const renderWorkoutItem = ({ item }: { item: Workout }) => {
-    const { cardBackground, cardBorder } = getWorkoutCardColors(backgroundColor);
+    const { cardBackground, cardBorder, textColor, subtextColor } = getWorkoutCardColors(backgroundColor);
     const plannedInfo = todayPlannedByWorkoutId.get(item.id);
     const borderColor = plannedInfo ? '#4ade80' : cardBorder;
     const plannedLabelParts: string[] = [];
@@ -233,8 +249,8 @@ export default function WorkoutScreen() {
         onPress={() => handleWorkoutPress(item)}
         activeOpacity={0.7}>
         <View style={styles.workoutContent}>
-          <Text style={styles.workoutName}>{item.name}</Text>
-          <Text style={styles.workoutInfo}>
+          <Text style={[styles.workoutName, { color: textColor }]}>{item.name}</Text>
+          <Text style={[styles.workoutInfo, { color: subtextColor }]}>
             {item.exercises.length} {item.exercises.length === 1 ? 'Übung' : 'Übungen'}
           </Text>
           {!!plannedInfo && (
@@ -245,12 +261,12 @@ export default function WorkoutScreen() {
         </View>
         <View style={styles.actionButtons}>
           <Pressable
-            style={styles.editButton}
+            style={[styles.editButton, isLightBg && { backgroundColor: '#e5e7eb' }]}
             onPress={(e) => handleEditWorkout(item, e)}>
             <Text style={styles.editButtonText}>✎</Text>
           </Pressable>
           <Pressable
-            style={styles.deleteButton}
+            style={[styles.deleteButton, isLightBg && { backgroundColor: '#e5e7eb' }]}
             onPress={(e) => handleDeleteWorkout(item.id, e)}>
             <Text style={styles.deleteButtonText}>×</Text>
           </Pressable>
@@ -261,15 +277,15 @@ export default function WorkoutScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar style="light" />
+      <StatusBar style={statusBarStyle} />
       <View style={styles.header}>
-        <Text style={styles.subtitle}>Deine Workouts</Text>
+        <Text style={[styles.subtitle, { color: subTitleColor }]}>Deine Workouts</Text>
       </View>
 
       {workouts.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>Noch keine Workouts</Text>
-          <Text style={styles.emptyStateSubtext}>
+          <Text style={[styles.emptyStateText, { color: emptyStateTextColor }]}>Noch keine Workouts</Text>
+          <Text style={[styles.emptyStateSubtext, { color: emptyStateSubtextColor }]}>
             Erstelle dein erstes Workout mit dem + Button
           </Text>
         </View>
@@ -284,27 +300,34 @@ export default function WorkoutScreen() {
 
       <View style={styles.settingsButtonContainer}>
         <TouchableOpacity
-          style={styles.settingsButton}
+          style={[styles.settingsButton, { backgroundColor: buttonBgColor, borderColor: buttonBorderColor }]}
           onPress={() => router.push('/settings')}
           activeOpacity={0.8}>
-          <Text style={styles.settingsButtonText}>⚙</Text>
+          <Text style={[styles.settingsButtonText, { color: buttonIconColor }]}>⚙</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.fabContainer}>
         {showFabMenu && (
-          <View style={styles.fabMenu}>
+          <View style={[styles.fabMenu, isLightBg && { backgroundColor: '#ffffff', borderColor: '#d1d5db' }]}>
             <TouchableOpacity
-              style={[styles.fabMenuItem, styles.fabMenuItemFirst]}
+              style={[
+                  styles.fabMenuItem, 
+                  styles.fabMenuItemFirst, 
+                  isLightBg && { borderTopColor: '#d1d5db' }
+              ]}
               onPress={handleCreateWorkout}
               activeOpacity={0.8}>
-              <Text style={styles.fabMenuItemText}>Neues Workout</Text>
+              <Text style={[styles.fabMenuItemText, isLightBg && { color: '#111827' }]}>Neues Workout</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.fabMenuItem}
+              style={[
+                  styles.fabMenuItem,
+                  isLightBg && { borderTopColor: '#d1d5db' }
+              ]}
               onPress={handleCreateExercise}
               activeOpacity={0.8}>
-              <Text style={styles.fabMenuItemText}>Neue Übung</Text>
+              <Text style={[styles.fabMenuItemText, isLightBg && { color: '#111827' }]}>Neue Übung</Text>
             </TouchableOpacity>
           </View>
         )}

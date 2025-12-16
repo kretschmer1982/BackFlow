@@ -13,6 +13,24 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useMemo } from 'react';
+
+function parseHexColor(hex: string) {
+  const sanitized = hex.replace('#', '');
+  if (sanitized.length !== 6) {
+    return { r: 0, g: 0, b: 0 };
+  }
+  const r = parseInt(sanitized.slice(0, 2), 16);
+  const g = parseInt(sanitized.slice(2, 4), 16);
+  const b = parseInt(sanitized.slice(4, 6), 16);
+  return { r, g, b };
+}
+
+function isDarkColor(hex: string) {
+  const { r, g, b } = parseHexColor(hex);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
 
 function PlankVideo({ size }: { size: number }) {
   const player = useVideoPlayer(require('../../assets/videos/plank.mp4'), (p) => {
@@ -66,6 +84,11 @@ export function RunExerciseView({
   const contentWidth = windowWidth - 48; // 2 * padding 24 aus workoutScreen
   const videoSize = contentWidth * 0.8; // quadratisches Video mit 80% der Inhaltsbreite
 
+  const isDark = useMemo(() => isDarkColor(backgroundColor), [backgroundColor]);
+  const textColor = isDark ? '#ffffff' : '#111827';
+  const subTextColor = isDark ? '#aaaaaa' : '#4b5563';
+  const timerColor = isDark ? '#ffffff' : '#111827';
+
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -76,7 +99,7 @@ export function RunExerciseView({
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={styles.workoutScreen}>
         <TouchableOpacity
           style={styles.touchableArea}
@@ -84,7 +107,7 @@ export function RunExerciseView({
           onPress={isRepsExercise ? onExerciseTap : undefined}
           disabled={!isRepsExercise}>
           <View style={styles.roundInfo}>
-            <Text style={styles.roundText}>
+            <Text style={[styles.roundText, { color: textColor }]}>
               {workoutName} • Übung {currentExerciseIndex + 1} /{' '}
               {totalExercises}
             </Text>
@@ -105,35 +128,37 @@ export function RunExerciseView({
           )}
           <View style={styles.timerContainer}>
             {isRepsExercise ? (
-              <Text style={styles.repsText}>{currentExercise.amount} x</Text>
+              <Text style={[styles.repsText, { color: timerColor }]}>{currentExercise.amount} x</Text>
             ) : (
-              <Text style={styles.timerText}>
+              <Text style={[styles.timerText, { color: timerColor }]}>
                 {formatTime(timeRemaining)}
               </Text>
             )}
             {isRepsExercise && (
-              <Text style={styles.stopwatchText}>
+              <Text style={[styles.stopwatchText, { color: textColor }]}>
                 {formatTime(elapsedTime)}
               </Text>
             )}
           </View>
 
           <View style={styles.exerciseDisplay}>
-            <Text style={styles.currentExerciseText}>
+            <Text style={[styles.currentExerciseText, { color: textColor }]}>
               {currentExercise.name}
             </Text>
-            <Text style={styles.instructionsText}>
+            <Text style={[styles.instructionsText, { color: textColor }]}>
               {currentExercise.instructions}
             </Text>
             {isRepsExercise && (
-              <Text style={styles.tapHint}>Tippe zum Abschließen</Text>
+              <Text style={[styles.tapHint, { color: subTextColor }]}>Tippe zum Abschließen</Text>
             )}
           </View>
         </TouchableOpacity>
 
         <View style={styles.buttonContainer}>
-          <Pressable style={styles.cancelButton} onPress={onCancel}>
-            <Text style={styles.cancelButtonText}>ABBRECHEN</Text>
+          <Pressable 
+            style={[styles.cancelButton, !isDark && { backgroundColor: '#e5e7eb', borderColor: '#d1d5db' }]} 
+            onPress={onCancel}>
+            <Text style={[styles.cancelButtonText, !isDark && { color: '#111827' }]}>ABBRECHEN</Text>
           </Pressable>
           <Pressable style={styles.skipButton} onPress={onSkip}>
             <Text style={styles.skipButtonText}>Skip</Text>
@@ -171,7 +196,6 @@ const styles = StyleSheet.create({
   },
   roundText: {
     fontSize: 18,
-    color: '#ffffff',
     fontWeight: '600',
     opacity: 0.9,
   },
@@ -183,19 +207,16 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 72,
     fontWeight: 'bold',
-    color: '#ffffff',
     letterSpacing: 4,
   },
   repsText: {
     fontSize: 80,
     fontWeight: 'bold',
-    color: '#ffffff',
     letterSpacing: 4,
   },
   stopwatchText: {
     fontSize: 32,
     fontWeight: '600',
-    color: '#ffffff',
     opacity: 0.7,
     marginTop: 8,
   },
@@ -208,14 +229,12 @@ const styles = StyleSheet.create({
   currentExerciseText: {
     fontSize: 56,
     fontWeight: 'bold',
-    color: '#ffffff',
     textAlign: 'center',
     letterSpacing: 2,
     marginBottom: 16,
   },
   instructionsText: {
     fontSize: 20,
-    color: '#ffffff',
     textAlign: 'center',
     opacity: 0.9,
     paddingHorizontal: 20,
@@ -223,7 +242,6 @@ const styles = StyleSheet.create({
   },
   tapHint: {
     fontSize: 18,
-    color: '#ffffff',
     textAlign: 'center',
     opacity: 0.7,
     marginTop: 24,
@@ -276,5 +294,3 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 });
-
-

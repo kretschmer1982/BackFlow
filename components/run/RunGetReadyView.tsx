@@ -12,6 +12,24 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useMemo } from 'react';
+
+function parseHexColor(hex: string) {
+  const sanitized = hex.replace('#', '');
+  if (sanitized.length !== 6) {
+    return { r: 0, g: 0, b: 0 };
+  }
+  const r = parseInt(sanitized.slice(0, 2), 16);
+  const g = parseInt(sanitized.slice(2, 4), 16);
+  const b = parseInt(sanitized.slice(4, 6), 16);
+  return { r, g, b };
+}
+
+function isDarkColor(hex: string) {
+  const { r, g, b } = parseHexColor(hex);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
 
 function PlankVideo({ size }: { size: number }) {
   const player = useVideoPlayer(require('../../assets/videos/plank.mp4'), (p) => {
@@ -59,12 +77,18 @@ export function RunGetReadyView({
   const windowWidth = Dimensions.get('window').width;
   const contentWidth = windowWidth - 48; // 2 * padding 24 aus workoutScreen
   const videoSize = contentWidth * 0.8; // quadratisches Video mit 80% der Inhaltsbreite
+
+  const isDark = useMemo(() => isDarkColor(backgroundColor), [backgroundColor]);
+  const textColor = isDark ? '#ffffff' : '#111827';
+  const subTextColor = isDark ? '#aaaaaa' : '#4b5563';
+  const timerColor = isDark ? '#ffffff' : '#111827';
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={styles.workoutScreen}>
         <View style={styles.roundInfo}>
-          <Text style={styles.roundText}>
+          <Text style={[styles.roundText, { color: textColor }]}>
             {workoutName} • Übung {currentExerciseIndex + 1} /{' '}
             {totalExercises}
           </Text>
@@ -81,29 +105,31 @@ export function RunGetReadyView({
           />
         )}
         <View style={styles.timerContainer}>
-          <Text style={styles.timerText}>{timeRemaining}</Text>
+          <Text style={[styles.timerText, { color: timerColor }]}>{timeRemaining}</Text>
         </View>
 
         <View style={styles.exerciseDisplay}>
-          <Text style={styles.getReadyText} numberOfLines={1} adjustsFontSizeToFit>
+          <Text style={[styles.getReadyText, { color: textColor }]} numberOfLines={1} adjustsFontSizeToFit>
             GET READY
           </Text>
-          <Text style={styles.nextExerciseText}>Nächste Übung:</Text>
-          <Text style={styles.nextExerciseName}>{currentExercise.name}</Text>
+          <Text style={[styles.nextExerciseText, { color: textColor }]}>Nächste Übung:</Text>
+          <Text style={[styles.nextExerciseName, { color: textColor }]}>{currentExercise.name}</Text>
           {currentExercise.type === 'duration' ? (
-            <Text style={styles.nextExerciseInfo}>
+            <Text style={[styles.nextExerciseInfo, { color: textColor }]}>
               {currentExercise.amount}s
             </Text>
           ) : (
-            <Text style={styles.nextExerciseInfo}>
+            <Text style={[styles.nextExerciseInfo, { color: textColor }]}>
               {currentExercise.amount} x
             </Text>
           )}
         </View>
 
         <View style={styles.buttonContainer}>
-          <Pressable style={styles.cancelButton} onPress={onCancel}>
-            <Text style={styles.cancelButtonText}>ABBRECHEN</Text>
+          <Pressable 
+            style={[styles.cancelButton, !isDark && { backgroundColor: '#e5e7eb', borderColor: '#d1d5db' }]} 
+            onPress={onCancel}>
+            <Text style={[styles.cancelButtonText, !isDark && { color: '#111827' }]}>ABBRECHEN</Text>
           </Pressable>
           <Pressable style={styles.skipButton} onPress={onSkip}>
             <Text style={styles.skipButtonText}>Skip</Text>
@@ -128,7 +154,6 @@ const styles = StyleSheet.create({
   },
   roundText: {
     fontSize: 18,
-    color: '#ffffff',
     fontWeight: '600',
     opacity: 0.9,
   },
@@ -140,7 +165,6 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 72,
     fontWeight: 'bold',
-    color: '#ffffff',
     letterSpacing: 4,
   },
   exerciseDisplay: {
@@ -152,27 +176,23 @@ const styles = StyleSheet.create({
   getReadyText: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#ffffff',
     textAlign: 'center',
     marginBottom: 12,
     letterSpacing: 2,
   },
   nextExerciseText: {
     fontSize: 20,
-    color: '#ffffff',
     opacity: 0.8,
     marginBottom: 12,
   },
   nextExerciseName: {
     fontSize: 36,
     fontWeight: '600',
-    color: '#ffffff',
     textAlign: 'center',
     marginBottom: 8,
   },
   nextExerciseInfo: {
     fontSize: 24,
-    color: '#ffffff',
     opacity: 0.7,
     textAlign: 'center',
   },
@@ -230,5 +250,3 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 });
-
-

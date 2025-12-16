@@ -2,7 +2,7 @@ import { Exercise } from '@/constants/exercises';
 import { getCustomExercises, getSettings, saveCustomExercise } from '@/utils/storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
     KeyboardAvoidingView,
     Pressable,
@@ -14,9 +14,26 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+function parseHexColor(hex: string) {
+  const sanitized = hex.replace('#', '');
+  if (sanitized.length !== 6) {
+    return { r: 0, g: 0, b: 0 };
+  }
+  const r = parseInt(sanitized.slice(0, 2), 16);
+  const g = parseInt(sanitized.slice(2, 4), 16);
+  const b = parseInt(sanitized.slice(4, 6), 16);
+  return { r, g, b };
+}
+
+function isDarkColor(hex: string) {
+  const { r, g, b } = parseHexColor(hex);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
+
 export default function CreateExerciseScreen() {
   const router = useRouter();
-  const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
+  const [backgroundColor, setBackgroundColor] = useState<string>('#2a2a2a');
   const [exercise, setExercise] = useState<Partial<Exercise>>({
     name: '',
     type: 'duration',
@@ -32,6 +49,14 @@ export default function CreateExerciseScreen() {
     };
     loadSettings();
   }, []);
+
+  const isDarkBackground = useMemo(() => isDarkColor(backgroundColor), [backgroundColor]);
+  const textColor = isDarkBackground ? '#ffffff' : '#111827';
+  const labelColor = isDarkBackground ? '#ffffff' : '#111827';
+  const inputBg = isDarkBackground ? '#2a2a2a' : '#f9fafb';
+  const inputBorder = isDarkBackground ? '#333333' : '#d1d5db';
+  const inputColor = isDarkBackground ? '#ffffff' : '#111827';
+  const placeholderColor = isDarkBackground ? '#666666' : '#9ca3af';
 
   const handleSave = async () => {
     if (!exercise.name?.trim()) {
@@ -72,43 +97,44 @@ export default function CreateExerciseScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar style="light" />
-      <View style={styles.header}>
-        <Text style={styles.title}>Neue Übung</Text>
+      <StatusBar style={isDarkBackground ? 'light' : 'dark'} />
+      <View style={[styles.header, { borderBottomColor: inputBorder }]}>
+        <Text style={[styles.title, { color: textColor }]}>Neue Übung</Text>
       </View>
 
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           <View style={styles.section}>
-            <Text style={styles.label}>Übungsname *</Text>
+            <Text style={[styles.label, { color: labelColor }]}>Übungsname *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }]}
               value={exercise.name}
               onChangeText={(text) => setExercise({ ...exercise, name: text })}
               placeholder="z.B. Liegestütze"
-              placeholderTextColor="#666666"
+              placeholderTextColor={placeholderColor}
             />
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.label}>Anweisungen *</Text>
+            <Text style={[styles.label, { color: labelColor }]}>Anweisungen *</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }]}
               value={exercise.instructions}
               onChangeText={(text) => setExercise({ ...exercise, instructions: text })}
               placeholder="Beschreibe die Übung..."
-              placeholderTextColor="#666666"
+              placeholderTextColor={placeholderColor}
               multiline
               numberOfLines={4}
             />
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.label}>Typ</Text>
+            <Text style={[styles.label, { color: labelColor }]}>Typ</Text>
             <View style={styles.typeSelector}>
               <Pressable
                 style={[
                   styles.typeButton,
+                  { backgroundColor: inputBg, borderColor: inputBorder },
                   exercise.type === 'duration' && styles.typeButtonActive,
                 ]}
                 onPress={() => setExercise({ ...exercise, type: 'duration' })}>
@@ -123,6 +149,7 @@ export default function CreateExerciseScreen() {
               <Pressable
                 style={[
                   styles.typeButton,
+                  { backgroundColor: inputBg, borderColor: inputBorder },
                   exercise.type === 'reps' && styles.typeButtonActive,
                 ]}
                 onPress={() => setExercise({ ...exercise, type: 'reps' })}>
@@ -138,11 +165,11 @@ export default function CreateExerciseScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.label}>
+            <Text style={[styles.label, { color: labelColor }]}>
               {exercise.type === 'duration' ? 'Sekunden' : 'Anzahl'}
             </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: inputBg, borderColor: inputBorder, color: inputColor }]}
               value={exercise.amount?.toString()}
               onChangeText={(text) => {
                 const num = parseInt(text, 10);
@@ -154,13 +181,13 @@ export default function CreateExerciseScreen() {
                 }
               }}
               placeholder={exercise.type === 'duration' ? '40' : '10'}
-              placeholderTextColor="#666666"
+              placeholderTextColor={placeholderColor}
               keyboardType="numeric"
             />
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { backgroundColor: backgroundColor, borderTopColor: inputBorder }]}>
           <Pressable style={styles.saveButton} onPress={handleSave}>
             <Text style={styles.saveButtonText}>Übung Speichern</Text>
           </Pressable>
@@ -173,13 +200,11 @@ export default function CreateExerciseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
   },
   header: {
     padding: 24,
     paddingTop: 40,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
   },
   backButton: {
     marginBottom: 16,
@@ -192,7 +217,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#ffffff',
   },
   scrollView: {
     flex: 1,
@@ -207,17 +231,13 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
     marginBottom: 12,
   },
   input: {
-    backgroundColor: '#2a2a2a',
     borderRadius: 12,
     padding: 16,
     fontSize: 18,
-    color: '#ffffff',
     borderWidth: 1,
-    borderColor: '#333333',
   },
   textArea: {
     minHeight: 100,
@@ -231,14 +251,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#2a2a2a',
     borderWidth: 2,
-    borderColor: '#333333',
     alignItems: 'center',
   },
   typeButtonActive: {
     borderColor: '#4ade80',
-    backgroundColor: '#1a3a2a',
+    // backgroundColor wird durch style prop überschrieben, hier evtl. hardcoded Farbe vermeiden
   },
   typeButtonText: {
     fontSize: 16,
@@ -251,8 +269,6 @@ const styles = StyleSheet.create({
   footer: {
     padding: 24,
     borderTopWidth: 1,
-    borderTopColor: '#2a2a2a',
-    backgroundColor: '#1a1a1a',
   },
   saveButton: {
     backgroundColor: '#4ade80',
@@ -267,5 +283,3 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 });
-
-

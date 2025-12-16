@@ -7,7 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Modal, Platform, StyleSheet, Text, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +16,23 @@ function toLocalDateKey(d: Date) {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function parseHexColor(hex: string) {
+  const sanitized = hex.replace('#', '');
+  if (sanitized.length !== 6) {
+    return { r: 0, g: 0, b: 0 };
+  }
+  const r = parseInt(sanitized.slice(0, 2), 16);
+  const g = parseInt(sanitized.slice(2, 4), 16);
+  const b = parseInt(sanitized.slice(4, 6), 16);
+  return { r, g, b };
+}
+
+function isDarkColor(hex: string) {
+  const { r, g, b } = parseHexColor(hex);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
 }
 
 async function markWorkoutCompletedToday(workoutId: string, durationMinutes: number) {
@@ -58,6 +75,9 @@ export default function RunWorkoutScreen() {
 
   const [flashVisible, setFlashVisible] = useState(false);
   const flashTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const isDark = useMemo(() => isDarkColor(backgroundColor), [backgroundColor]);
+  const textColor = isDark ? '#ffffff' : '#111827';
 
   useEffect(() => {
     if (!silentFinishSignalId) return;
@@ -136,9 +156,9 @@ export default function RunWorkoutScreen() {
   if (!workout) {
     content = (
       <SafeAreaView style={[styles.container, { backgroundColor }]}>
-        <StatusBar style="light" />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Lade Workout...</Text>
+          <Text style={[styles.loadingText, { color: textColor }]}>Lade Workout...</Text>
         </View>
       </SafeAreaView>
     );
@@ -161,9 +181,9 @@ export default function RunWorkoutScreen() {
   } else if (!currentExercise) {
     content = (
       <SafeAreaView style={[styles.container, { backgroundColor }]}>
-        <StatusBar style="light" />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Keine Übungen gefunden</Text>
+          <Text style={[styles.loadingText, { color: textColor }]}>Keine Übungen gefunden</Text>
         </View>
       </SafeAreaView>
     );
@@ -225,7 +245,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 18,
-    color: '#ffffff',
   },
   silentFinishOverlay: {
     ...StyleSheet.absoluteFillObject,
