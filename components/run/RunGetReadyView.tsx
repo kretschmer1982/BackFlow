@@ -1,9 +1,10 @@
-// @ts-nocheck
 import { getImageSource } from '@/constants/exercises';
+import { APP_THEME_COLORS, isLightColor } from '@/constants/theme';
 import { WorkoutExercise } from '@/types/interfaces';
 import { StatusBar } from 'expo-status-bar';
-import { VideoView, useVideoPlayer } from 'expo-video';
+import { useMemo } from 'react';
 import {
+  Alert,
   Dimensions,
   Image,
   Pressable,
@@ -12,45 +13,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useMemo } from 'react';
-
-function parseHexColor(hex: string) {
-  const sanitized = hex.replace('#', '');
-  if (sanitized.length !== 6) {
-    return { r: 0, g: 0, b: 0 };
-  }
-  const r = parseInt(sanitized.slice(0, 2), 16);
-  const g = parseInt(sanitized.slice(2, 4), 16);
-  const b = parseInt(sanitized.slice(4, 6), 16);
-  return { r, g, b };
-}
-
-function isDarkColor(hex: string) {
-  const { r, g, b } = parseHexColor(hex);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance < 0.5;
-}
-
-function PlankVideo({ size }: { size: number }) {
-  const player = useVideoPlayer(require('../../assets/videos/plank.mp4'), (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
-  });
-
-  return (
-    <VideoView
-      player={player}
-      pointerEvents="none"
-      style={[styles.exerciseVideo, { width: size, height: size }]}
-      contentFit="cover"
-      nativeControls={false}
-      allowsFullscreen={false}
-      allowsPictureInPicture={false}
-      showsTimecodes={false}
-    />
-  );
-}
 
 interface RunGetReadyViewProps {
   workoutName: string;
@@ -73,15 +35,34 @@ export function RunGetReadyView({
   onSkip,
   onCancel,
 }: RunGetReadyViewProps) {
-  const hasVideo = currentExercise.name === 'Plank';
-  const windowWidth = Dimensions.get('window').width;
-  const contentWidth = windowWidth - 48; // 2 * padding 24 aus workoutScreen
-  const videoSize = contentWidth * 0.8; // quadratisches Video mit 80% der Inhaltsbreite
+  const windowHeight = Dimensions.get('window').height;
+  const imageSize = windowHeight * 0.35;
 
-  const isDark = useMemo(() => isDarkColor(backgroundColor), [backgroundColor]);
-  const textColor = isDark ? '#ffffff' : '#111827';
-  const subTextColor = isDark ? '#aaaaaa' : '#4b5563';
-  const timerColor = isDark ? '#ffffff' : '#111827';
+  const isDark = useMemo(() => !isLightColor(backgroundColor), [backgroundColor]);
+  const textColor = isDark ? APP_THEME_COLORS.dark.text : APP_THEME_COLORS.light.text;
+  const subTextColor = isDark ? APP_THEME_COLORS.dark.subtext : APP_THEME_COLORS.light.subtext;
+  const timerColor = isDark ? APP_THEME_COLORS.dark.text : APP_THEME_COLORS.light.text;
+  const accentColor = isDark ? APP_THEME_COLORS.dark.accent : APP_THEME_COLORS.light.accent;
+  const cardBg = isDark ? APP_THEME_COLORS.dark.cardBackground : APP_THEME_COLORS.light.cardBackground;
+  const deleteColor = isDark ? APP_THEME_COLORS.dark.delete : APP_THEME_COLORS.light.delete;
+
+  const handleCancelPress = () => {
+    Alert.alert(
+      'Training abbrechen',
+      'Möchtest du das Training wirklich abbrechen?',
+      [
+        {
+          text: 'Nein',
+          style: 'cancel',
+        },
+        {
+          text: 'Ja, abbrechen',
+          style: 'destructive',
+          onPress: onCancel,
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
@@ -94,16 +75,12 @@ export function RunGetReadyView({
           </Text>
         </View>
 
-        {/* Übungsbild oder Video */}
-        {hasVideo ? (
-          <PlankVideo size={videoSize} />
-        ) : (
-          <Image
-            source={getImageSource(currentExercise.name, currentExercise.image)}
-            style={styles.exerciseImage}
-            resizeMode="cover"
-          />
-        )}
+        <Image
+          source={getImageSource(currentExercise.name, currentExercise.image)}
+          style={[styles.exerciseImage, { width: imageSize, height: imageSize }]}
+          resizeMode="contain"
+        />
+        
         <View style={styles.timerContainer}>
           <Text style={[styles.timerText, { color: timerColor }]}>{timeRemaining}</Text>
         </View>
@@ -112,8 +89,9 @@ export function RunGetReadyView({
           <Text style={[styles.getReadyText, { color: textColor }]} numberOfLines={1} adjustsFontSizeToFit>
             GET READY
           </Text>
-          <Text style={[styles.nextExerciseText, { color: textColor }]}>Nächste Übung:</Text>
+          
           <Text style={[styles.nextExerciseName, { color: textColor }]}>{currentExercise.name}</Text>
+          
           {currentExercise.type === 'duration' ? (
             <Text style={[styles.nextExerciseInfo, { color: textColor }]}>
               {currentExercise.amount}s
@@ -123,16 +101,22 @@ export function RunGetReadyView({
               {currentExercise.amount} x
             </Text>
           )}
+
+          <Text style={[styles.instructionsText, { color: subTextColor }]}>
+            {currentExercise.instructions}
+          </Text>
         </View>
 
         <View style={styles.buttonContainer}>
           <Pressable 
-            style={[styles.cancelButton, !isDark && { backgroundColor: '#e5e7eb', borderColor: '#d1d5db' }]} 
-            onPress={onCancel}>
-            <Text style={[styles.cancelButtonText, !isDark && { color: '#111827' }]}>ABBRECHEN</Text>
+            style={[styles.cancelButton, { backgroundColor: cardBg }]} 
+            onPress={handleCancelPress}>
+            <Text style={[styles.cancelButtonText, { color: deleteColor }]}>×</Text>
           </Pressable>
-          <Pressable style={styles.skipButton} onPress={onSkip}>
-            <Text style={styles.skipButtonText}>Skip</Text>
+          <Pressable 
+            style={[styles.skipButton, { backgroundColor: accentColor, borderColor: accentColor }]} 
+            onPress={onSkip}>
+            <Text style={[styles.skipButtonText, { color: isDark ? '#1a1a1a' : '#ffffff' }]}>Skip</Text>
           </Pressable>
         </View>
       </View>
@@ -150,103 +134,95 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   roundInfo: {
-    marginTop: 20,
+    marginTop: 10,
+    marginBottom: 10,
   },
   roundText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     opacity: 0.9,
   },
   timerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 40,
+    marginVertical: 20,
   },
   timerText: {
-    fontSize: 72,
+    fontSize: 32,
     fontWeight: 'bold',
     letterSpacing: 4,
   },
   exerciseDisplay: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     width: '100%',
   },
   getReadyText: {
-    fontSize: 32,
+    fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
     letterSpacing: 2,
   },
-  nextExerciseText: {
-    fontSize: 20,
-    opacity: 0.8,
-    marginBottom: 12,
-  },
   nextExerciseName: {
-    fontSize: 36,
+    fontSize: 22, // Reduziert um ca. 40% (von 36)
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   nextExerciseInfo: {
-    fontSize: 24,
+    fontSize: 15, // Reduziert um ca. 40% (von 24)
     opacity: 0.7,
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  instructionsText: {
+    fontSize: 24,
+    textAlign: 'center',
+    opacity: 0.9,
+    paddingHorizontal: 20,
+    lineHeight: 26,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginTop: 20,
+    marginTop: 10,
   },
   skipButton: {
-    backgroundColor: '#f59e0b',
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#d97706',
-    minWidth: 80,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    minWidth: 100,
     alignItems: 'center',
   },
   skipButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
   cancelButton: {
-    backgroundColor: '#3a3a3a',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#555555',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 50,
+    height: 50,
   },
   cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    letterSpacing: 1,
+    fontSize: 32,
+    fontWeight: 'bold',
+    lineHeight: 34,
   },
   exerciseImage: {
-    width: 300,
-    height: 200,
-    borderRadius: 16,
-    marginTop: 24,
-    marginBottom: 24,
-    backgroundColor: '#2a2a2a',
-    alignSelf: 'center',
-    overflow: 'hidden',
-  },
-  exerciseVideo: {
-    marginTop: 24,
-    marginBottom: 24,
+    borderRadius: 12,
     backgroundColor: 'transparent',
     alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 10,
   },
 });
