@@ -10,6 +10,8 @@ type Props = {
   accentColor: string;
   height: number;
   topPadding?: number;
+  textColor?: string;
+  lineColor?: string;
 };
 
 export function MonthlyTrainingBarChart({
@@ -19,6 +21,8 @@ export function MonthlyTrainingBarChart({
   accentColor,
   height,
   topPadding = 0,
+  textColor = '#8a8a8a',
+  lineColor = '#2b2b2b',
 }: Props) {
   const safeMax = Math.max(1, yAxisMax || 1);
   const hasData = weeks.length > 0;
@@ -35,9 +39,9 @@ export function MonthlyTrainingBarChart({
             return (
               <View key={`y-${t}`} style={styles.yTickLayer}>
                 {/* Gridline exakt auf y */}
-                <View style={[styles.yGridLineAbs, { top: y }]} />
+                <View style={[styles.yGridLineAbs, { top: y, backgroundColor: lineColor }]} />
                 {/* Label optisch zentriert zur Gridline */}
-                <Text style={[styles.yTickLabelAbs, { top: y }]}>
+                <Text style={[styles.yTickLabelAbs, { top: y, color: textColor }]}>
                   {t}
                 </Text>
               </View>
@@ -49,7 +53,7 @@ export function MonthlyTrainingBarChart({
         <View style={styles.barsArea}>
           {!hasData ? (
             <View style={[styles.emptyState, { height }]}>
-              <Text style={styles.emptyStateText}>
+              <Text style={[styles.emptyStateText, { color: textColor }]}>
                 Keine durchgeführten Trainings in diesem Monat.
               </Text>
             </View>
@@ -59,7 +63,7 @@ export function MonthlyTrainingBarChart({
                 const h = Math.max(0, Math.min(1, w.count / safeMax));
                 return (
                   <View key={`${w.year}-W${w.week}`} style={styles.barGroupPlot}>
-                    <View style={[styles.barTrack, { height }]}>
+                    <View style={[styles.barTrack, { height, backgroundColor: lineColor ? lineColor + '33' : '#121212' }]}>
                       <View
                         style={[
                           styles.barFill,
@@ -67,7 +71,7 @@ export function MonthlyTrainingBarChart({
                         ]}
                       />
                       {/* Border als Overlay, damit die Füllung bis zur obersten Gridline reichen kann */}
-                      <View pointerEvents="none" style={styles.barBorder} />
+                      <View pointerEvents="none" style={[styles.barBorder, { borderColor: lineColor }]} />
                     </View>
                   </View>
                 );
@@ -85,7 +89,7 @@ export function MonthlyTrainingBarChart({
           <View style={styles.xLabelsRow}>
             {weeks.map((w) => (
               <View key={`x-${w.year}-W${w.week}`} style={styles.xLabelWrap}>
-                <Text style={styles.xLabel} numberOfLines={1}>
+                <Text style={[styles.xLabel, { color: textColor }]} numberOfLines={1}>
                   KW {w.week}
                 </Text>
               </View>
@@ -112,13 +116,12 @@ const styles = StyleSheet.create({
   yAxis: { width: Y_AXIS_W, paddingRight: 8, position: 'relative' },
   // Layer, damit Label und Linie getrennt exakt positioniert werden können
   yTickLayer: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
-  yGridLineAbs: { position: 'absolute', left: LABEL_W + 8, right: 0, height: 1, backgroundColor: '#2b2b2b' },
+  yGridLineAbs: { position: 'absolute', left: LABEL_W + 8, right: 0, height: 1 },
   yTickLabelAbs: {
     position: 'absolute',
     left: 0,
     width: LABEL_W,
     textAlign: 'right',
-    color: '#8a8a8a',
     fontSize: 11,
     fontWeight: '800',
     lineHeight: LABEL_LINE_H,
@@ -131,7 +134,6 @@ const styles = StyleSheet.create({
   barTrack: {
     width: BAR_W,
     borderRadius: 10,
-    backgroundColor: '#121212',
     overflow: 'hidden',
     justifyContent: 'flex-end',
   },
@@ -140,17 +142,14 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#2b2b2b',
   },
 
   xAxisRow: { flexDirection: 'row', marginTop: 6 },
   yAxisSpacer: { width: Y_AXIS_W },
   xLabelsRow: { flex: 1, flexDirection: 'row', gap: GAP, paddingRight: 6 },
   xLabelWrap: { width: BAR_GROUP_W, alignItems: 'center' },
-  xLabel: { color: '#8a8a8a', fontSize: 11, fontWeight: '800' },
+  xLabel: { fontSize: 11, fontWeight: '800' },
 
   emptyState: { justifyContent: 'center', alignItems: 'center' },
-  emptyStateText: { color: '#8a8a8a', fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  emptyStateText: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
 });
-
-

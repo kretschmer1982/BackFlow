@@ -1,6 +1,7 @@
 import { Exercise } from '@/constants/exercises';
 import { Workout } from '@/types/interfaces';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { APP_THEME_COLORS } from '../constants/theme';
 
 const WORKOUTS_KEY = '@backflow_workouts';
 const CUSTOM_EXERCISES_KEY = '@backflow_custom_exercises';
@@ -30,7 +31,7 @@ export interface BackflowSettings {
 // Standard-Einstellungen
 const DEFAULT_SETTINGS: BackflowSettings = {
   // Standard: Dark Mode (grau)
-  appBackgroundColor: '#2a2a2a',
+  appBackgroundColor: APP_THEME_COLORS.dark.background,
   trainingReminderEnabled: false,
   trainingReminderTimeOfDay: 'morning',
   trainingReminderHasScheduled: false,

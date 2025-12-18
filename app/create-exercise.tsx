@@ -1,16 +1,17 @@
 import { Exercise } from '@/constants/exercises';
+import { APP_THEME_COLORS } from '@/constants/theme';
 import { getCustomExercises, getSettings, saveCustomExercise } from '@/utils/storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  KeyboardAvoidingView,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,7 +34,7 @@ function isDarkColor(hex: string) {
 
 export default function CreateExerciseScreen() {
   const router = useRouter();
-  const [backgroundColor, setBackgroundColor] = useState<string>('#2a2a2a');
+  const [backgroundColor, setBackgroundColor] = useState<string>(APP_THEME_COLORS.dark.background);
   const [exercise, setExercise] = useState<Partial<Exercise>>({
     name: '',
     type: 'duration',
@@ -51,6 +52,10 @@ export default function CreateExerciseScreen() {
   }, []);
 
   const isDarkBackground = useMemo(() => isDarkColor(backgroundColor), [backgroundColor]);
+  const theme = isDarkBackground ? APP_THEME_COLORS.dark : APP_THEME_COLORS.light;
+  const accentColor = theme.accent;
+  const cardBg = theme.cardBackground;
+  
   const textColor = isDarkBackground ? '#ffffff' : '#111827';
   const labelColor = isDarkBackground ? '#ffffff' : '#111827';
   const inputBg = isDarkBackground ? '#2a2a2a' : '#f9fafb';
@@ -135,13 +140,13 @@ export default function CreateExerciseScreen() {
                 style={[
                   styles.typeButton,
                   { backgroundColor: inputBg, borderColor: inputBorder },
-                  exercise.type === 'duration' && styles.typeButtonActive,
+                  exercise.type === 'duration' && { borderColor: accentColor },
                 ]}
                 onPress={() => setExercise({ ...exercise, type: 'duration' })}>
                 <Text
                   style={[
                     styles.typeButtonText,
-                    exercise.type === 'duration' && styles.typeButtonTextActive,
+                    exercise.type === 'duration' && { color: accentColor },
                   ]}>
                   Dauer
                 </Text>
@@ -150,13 +155,13 @@ export default function CreateExerciseScreen() {
                 style={[
                   styles.typeButton,
                   { backgroundColor: inputBg, borderColor: inputBorder },
-                  exercise.type === 'reps' && styles.typeButtonActive,
+                  exercise.type === 'reps' && { borderColor: accentColor },
                 ]}
                 onPress={() => setExercise({ ...exercise, type: 'reps' })}>
                 <Text
                   style={[
                     styles.typeButtonText,
-                    exercise.type === 'reps' && styles.typeButtonTextActive,
+                    exercise.type === 'reps' && { color: accentColor },
                   ]}>
                   Wiederholungen
                 </Text>
@@ -176,7 +181,6 @@ export default function CreateExerciseScreen() {
                 if (!isNaN(num) && num > 0) {
                   setExercise({ ...exercise, amount: num });
                 } else if (text === '') {
-                  // Eingabe gelöscht: amount nicht auf 0 setzen, sondern leer lassen
                   setExercise({ ...exercise, amount: undefined });
                 }
               }}
@@ -188,8 +192,11 @@ export default function CreateExerciseScreen() {
         </ScrollView>
 
         <View style={[styles.footer, { backgroundColor: backgroundColor, borderTopColor: inputBorder }]}>
-          <Pressable style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Übung Speichern</Text>
+          <Pressable 
+            style={[styles.saveButton, { backgroundColor: cardBg, borderWidth: 1, borderColor: inputBorder }]} 
+            onPress={handleSave}
+          >
+            <Text style={[styles.saveButtonText, { color: accentColor }]}>Übung Speichern</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -211,7 +218,6 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 16,
-    color: '#4ade80',
     fontWeight: '600',
   },
   title: {
@@ -254,24 +260,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
   },
-  typeButtonActive: {
-    borderColor: '#4ade80',
-    // backgroundColor wird durch style prop überschrieben, hier evtl. hardcoded Farbe vermeiden
-  },
   typeButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#aaaaaa',
-  },
-  typeButtonTextActive: {
-    color: '#4ade80',
   },
   footer: {
     padding: 24,
     borderTopWidth: 1,
   },
   saveButton: {
-    backgroundColor: '#4ade80',
     borderRadius: 12,
     padding: 18,
     alignItems: 'center',
@@ -279,7 +277,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1a1a1a',
     letterSpacing: 1,
   },
 });

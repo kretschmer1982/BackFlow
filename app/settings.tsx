@@ -1,34 +1,19 @@
+import { APP_THEME_COLORS, BACKGROUND_OPTIONS, isLightColor } from '@/constants/theme';
 import { getSettings, updateSettings } from '@/utils/storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
 import {
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-function isLightColor(color: string): boolean {
-  const hex = color.replace('#', '');
-  if (hex.length !== 6) return false;
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.7;
-}
-
-// Verfügbare Hintergrundoptionen
-const BACKGROUND_OPTIONS = [
-  { name: 'Dark Mode', color: '#2a2a2a' }, // Mehr grau
-  { name: 'Light Mode', color: '#DBEAFE' }, // Mehr bläulich
-];
-
 export default function SettingsScreen() {
   const router = useRouter();
-  const [backgroundColor, setBackgroundColor] = useState<string>('#2a2a2a');
+  const [backgroundColor, setBackgroundColor] = useState<string>(APP_THEME_COLORS.dark.background);
   const [enableBeep, setEnableBeep] = useState<boolean>(true);
   const [exerciseTransitionSeconds, setExerciseTransitionSeconds] = useState<number>(15);
 
@@ -58,18 +43,19 @@ export default function SettingsScreen() {
 
   const isLightBackground = isLightColor(backgroundColor);
   const statusBarStyle = isLightBackground ? 'dark' : 'light';
-  
-  const textColorOnLight = '#111827';
-  const subtextColorOnLight = '#4b5563';
+  const lightTextColor = APP_THEME_COLORS.light.text;
+  const lightSubtextColor = APP_THEME_COLORS.light.subtext;
+  const lightBorderColor = APP_THEME_COLORS.light.borderColor;
+  const darkBorderColor = APP_THEME_COLORS.dark.borderColor;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style={statusBarStyle} />
-      <View style={[styles.header, isLightBackground && { borderBottomColor: '#e5e7eb' }]}>
+      <View style={[styles.header, isLightBackground && { borderBottomColor: lightBorderColor }]}>
         <Text
           style={[
             styles.title,
-            isLightBackground && { color: textColorOnLight },
+            isLightBackground && { color: lightTextColor },
           ]}>
           Einstellungen
         </Text>
@@ -83,14 +69,14 @@ export default function SettingsScreen() {
             <Text
               style={[
                 styles.sectionTitle,
-                isLightBackground && { color: textColorOnLight },
+                isLightBackground && { color: lightTextColor },
               ]}>
               Hintergrund
             </Text>
             <Text
               style={[
                 styles.sectionSubtitle,
-                isLightBackground && { color: subtextColorOnLight },
+                isLightBackground && { color: lightSubtextColor },
               ]}>
               Wähle dein bevorzugtes Design.
             </Text>
@@ -103,10 +89,10 @@ export default function SettingsScreen() {
                   styles.colorCircle,
                   { backgroundColor: option.color },
                   backgroundColor.toLowerCase() === option.color.toLowerCase() && styles.colorCircleSelected,
-                  // Umrandung für den hellen Kreis auf hellem Hintergrund
-                  isLightBackground && option.color === '#DBEAFE' && { borderColor: '#d1d5db' },
+                  // Umrandung für den hellen Kreis auf hellem Hintergrund (Text-Farbe für Kontrast)
+                  isLightBackground && option.color === APP_THEME_COLORS.light.background && { borderColor: lightSubtextColor },
                   // Umrandung für den dunklen Kreis auf dunklem Hintergrund
-                  !isLightBackground && option.color === '#2a2a2a' && { borderColor: '#333333' }
+                  !isLightBackground && option.color === APP_THEME_COLORS.dark.background && { borderColor: APP_THEME_COLORS.dark.subtext }
                 ]}
                 onPress={() => handleSelectColor(option.color)}
               />
@@ -126,14 +112,14 @@ export default function SettingsScreen() {
             <Text
               style={[
                 styles.sectionTitle,
-                isLightBackground && { color: textColorOnLight },
+                isLightBackground && { color: lightTextColor },
               ]}>
               Signalton beim Training
             </Text>
             <Text
               style={[
                 styles.sectionSubtitle,
-                isLightBackground && { color: subtextColorOnLight },
+                isLightBackground && { color: lightSubtextColor },
               ]}>
               Akustische Signale (Beeps & Ansagen) ein- oder ausschalten.
             </Text>
@@ -142,7 +128,7 @@ export default function SettingsScreen() {
             <Text
               style={[
                 styles.reminderStatus,
-                isLightBackground && { color: subtextColorOnLight },
+                isLightBackground && { color: lightSubtextColor },
               ]}>
               {enableBeep ? 'An' : 'Aus'}
             </Text>
@@ -155,43 +141,55 @@ export default function SettingsScreen() {
             <Text
               style={[
                 styles.sectionTitle,
-                isLightBackground && { color: textColorOnLight },
+                isLightBackground && { color: lightTextColor },
               ]}>
               Übergang zwischen Übungen
             </Text>
             <Text
               style={[
                 styles.sectionSubtitle,
-                isLightBackground && { color: subtextColorOnLight },
+                isLightBackground && { color: lightSubtextColor },
               ]}>
               Dauer der „Get Ready“-Phase zwischen zwei Übungen.
             </Text>
           </View>
           <View style={styles.entryRight}>
             <Pressable
-              style={[styles.stepButton, isLightBackground && { backgroundColor: '#e5e7eb', borderColor: '#d1d5db' }]}
+              style={[
+                styles.stepButton,
+                isLightBackground && {
+                  backgroundColor: APP_THEME_COLORS.light.buttonBackground,
+                  borderColor: lightBorderColor,
+                },
+              ]}
               onPress={async () => {
                 const next = Math.max(0, exerciseTransitionSeconds - 5);
                 setExerciseTransitionSeconds(next);
                 await updateSettings({ exerciseTransitionSeconds: next } as any);
               }}>
-              <Text style={[styles.stepButtonText, isLightBackground && { color: textColorOnLight }]}>−</Text>
+              <Text style={[styles.stepButtonText, isLightBackground && { color: lightTextColor }]}>−</Text>
             </Pressable>
             <Text
               style={[
                 styles.reminderStatus,
-                isLightBackground && { color: subtextColorOnLight },
+                isLightBackground && { color: lightSubtextColor },
               ]}>
               {exerciseTransitionSeconds}s
             </Text>
             <Pressable
-              style={[styles.stepButton, isLightBackground && { backgroundColor: '#e5e7eb', borderColor: '#d1d5db' }]}
+              style={[
+                styles.stepButton,
+                isLightBackground && {
+                  backgroundColor: APP_THEME_COLORS.light.buttonBackground,
+                  borderColor: lightBorderColor,
+                },
+              ]}
               onPress={async () => {
                 const next = Math.min(60, exerciseTransitionSeconds + 5);
                 setExerciseTransitionSeconds(next);
                 await updateSettings({ exerciseTransitionSeconds: next } as any);
               }}>
-              <Text style={[styles.stepButtonText, isLightBackground && { color: textColorOnLight }]}>+</Text>
+              <Text style={[styles.stepButtonText, isLightBackground && { color: lightTextColor }]}>+</Text>
             </Pressable>
           </View>
         </View>
@@ -208,7 +206,7 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 40,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: APP_THEME_COLORS.dark.borderColor,
   },
   title: {
     fontSize: 32,
@@ -239,31 +237,31 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#ffffff',
+    color: APP_THEME_COLORS.dark.text,
     marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#aaaaaa',
+    color: APP_THEME_COLORS.dark.subtext,
     marginBottom: 4,
   },
   reminderStatus: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#e5e7eb',
+    color: APP_THEME_COLORS.dark.subtext,
   },
   stepButton: {
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: APP_THEME_COLORS.dark.buttonBackground,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: APP_THEME_COLORS.dark.borderColor,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepButtonText: {
-    color: '#ffffff',
+    color: APP_THEME_COLORS.dark.text,
     fontSize: 18,
     fontWeight: '900',
     lineHeight: 18,
@@ -272,14 +270,14 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'transparent', // Standardmäßig transparent, wird dynamisch überschrieben
+    borderWidth: 3, // Dickerer Rand für bessere Sichtbarkeit
+    borderColor: 'transparent',
     marginHorizontal: 4,
   },
   colorCircleSelected: {
-    borderWidth: 2,
-    borderColor: '#4ade80', // Grüner Rand für ausgewählten Modus
-    width: 36, // Etwas größer
+    borderWidth: 4, // Noch dicker für Auswahl
+    borderColor: APP_THEME_COLORS.dark.accent,
+    width: 36,
     height: 36,
     borderRadius: 18,
   }

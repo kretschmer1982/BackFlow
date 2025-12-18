@@ -2,6 +2,7 @@ import { DayPickerModal } from '@/components/planner/modals/DayPickerModal';
 import { EditWorkoutModal } from '@/components/planner/modals/EditWorkoutModal';
 import { PastWorkoutDetailsModal } from '@/components/planner/modals/PastWorkoutDetailsModal';
 import { WorkoutPickerModal } from '@/components/planner/modals/WorkoutPickerModal';
+import { APP_THEME_COLORS, isLightColor } from '@/constants/theme';
 import { usePlannerData } from '@/hooks/usePlannerData';
 import { Workout } from '@/types/interfaces';
 import { addDays, formatDateRange, getNext7Days, toLocalDateKey } from '@/utils/date';
@@ -32,8 +33,8 @@ export default function PlannerScreen() {
     getWorkoutById,
     addWorkoutToDate,
     removeWorkoutFromDate,
-    updateWorkoutDetails, // Add new (past)
-    updateEntryAtIndex,   // Update existing
+    updateWorkoutDetails,
+    updateEntryAtIndex,
     moveWorkout,
   } = usePlannerData();
 
@@ -53,7 +54,6 @@ export default function PlannerScreen() {
 
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
   const [detailsDate, setDetailsDate] = useState<Date | null>(null);
-  // Wir merken uns, ob wir einen neuen Eintrag anlegen (WorkoutID) oder einen existierenden bearbeiten (Index)
   const [detailsWorkoutId, setDetailsWorkoutId] = useState<string | null>(null);
   const [detailsEntryIndex, setDetailsEntryIndex] = useState<number | null>(null);
   
@@ -89,6 +89,15 @@ export default function PlannerScreen() {
     }, [loadData])
   );
 
+  // --- Theme Logic ---
+  const isLight = isLightColor(backgroundColor);
+  const theme = isLight ? APP_THEME_COLORS.light : APP_THEME_COLORS.dark;
+  const textColor = theme.text;
+  const subtextColor = theme.subtext;
+  const cardBg = theme.cardBackground; // Ivory in Light Mode
+  const borderColor = theme.borderColor;
+  const accentColor = theme.accent;
+  
   // --- Layout Calculation ---
   const rowLayout = useMemo(() => {
     const rows = 8;
@@ -139,15 +148,13 @@ export default function PlannerScreen() {
       const isPast = dateKey < todayKey;
       
       if (isPast) {
-        // Hinzufügen für Vergangenheit -> Details Modal öffnen (New Entry Mode)
         setDetailsDate(selectedDateForPicker);
         setDetailsWorkoutId(workout.id);
-        setDetailsEntryIndex(null); // New entry
+        setDetailsEntryIndex(null); 
         setDetailsCompleted(false);
         setDetailsDurationMinutes('');
         setDetailsModalVisible(true);
       } else {
-        // Direkt hinzufügen
         await addWorkoutToDate(selectedDateForPicker, workout.id);
       }
     }
@@ -201,8 +208,8 @@ export default function PlannerScreen() {
     if (!editDate || editEntryIndex === null || !editingEntry) return;
     
     setDetailsDate(editDate);
-    setDetailsEntryIndex(editEntryIndex); // Existing entry
-    setDetailsWorkoutId(editingWorkoutId); // Fallback
+    setDetailsEntryIndex(editEntryIndex);
+    setDetailsWorkoutId(editingWorkoutId);
     setDetailsCompleted(!!editingEntry.completed);
     setDetailsDurationMinutes(
       typeof editingEntry.durationMinutes === 'number' ? String(editingEntry.durationMinutes) : ''
@@ -219,13 +226,11 @@ export default function PlannerScreen() {
     const durationMinutes = Number.isFinite(minutes) && minutes > 0 ? minutes : undefined;
 
     if (detailsEntryIndex !== null) {
-      // Update existing
       await updateEntryAtIndex(detailsDate, detailsEntryIndex, {
         completed: !!detailsCompleted,
         durationMinutes
       });
     } else if (detailsWorkoutId) {
-      // Add new
       await updateWorkoutDetails(detailsDate, detailsWorkoutId, !!detailsCompleted, durationMinutes);
     }
     
@@ -251,21 +256,38 @@ export default function PlannerScreen() {
     const entries = getEntriesForDate(date);
     const isToday = toLocalDateKey(date) === todayKey;
 
+    const rowContainerStyle = [
+      styles.planRowContainer,
+      { backgroundColor: cardBg, borderColor: borderColor },
+      isToday && { borderColor: accentColor + '80' } // Nur Border färben, Background bleibt cardBg
+    ];
+
+    const chipStyle = [
+      styles.trainingChip,
+      { backgroundColor: cardBg, borderColor: borderColor }
+    ];
+
     return (
-      <View style={[styles.dayItem, { height: rowLayout.rowH, marginBottom: rowLayout.gap }, isToday && styles.dayItemToday]}>
-        <View style={[styles.dateContainer, isToday && styles.dateContainerToday]}>
-          <Text style={[styles.dayName, isToday && styles.dayNameToday]}>
+      <View style={[styles.dayItem, { height: rowLayout.rowH, marginBottom: rowLayout.gap }]}>
+        <View style={[styles.dateContainer, isToday && { 
+            borderColor: accentColor + '50', 
+            backgroundColor: accentColor + '20',
+            borderWidth: 1,
+            borderRadius: 12,
+            paddingVertical: 6
+          }]}>
+          <Text style={[styles.dayName, { color: subtextColor }, isToday && { color: accentColor }]}>
             {date.toLocaleDateString('de-DE', { weekday: 'short' })}
           </Text>
-          <Text style={[styles.dateText, isToday && styles.dateTextToday]}>
+          <Text style={[styles.dateText, { color: textColor }, isToday && { color: accentColor }]}>
             {date.getDate()}.{date.getMonth() + 1}.
           </Text>
         </View>
 
-        <View style={[styles.planRowContainer, isToday && styles.planContainerToday]}>
+        <View style={rowContainerStyle}>
           {entries.length === 0 ? (
             <TouchableOpacity style={styles.singleAdd} onPress={() => handleDayPress(date)} activeOpacity={0.85}>
-              <Text style={styles.emptyPlanText}>+ Training planen</Text>
+              <Text style={[styles.emptyPlanText, { color: subtextColor }]}>+ Training planen</Text>
             </TouchableOpacity>
           ) : entries.length === 1 ? (
             <View style={styles.multiContainer}>
@@ -275,13 +297,13 @@ export default function PlannerScreen() {
                 const done = !!e.completed;
                 return (
                   <TouchableOpacity
-                    style={[styles.trainingChip, styles.trainingChipFullHeight]}
+                    style={[chipStyle, styles.trainingChipFullHeight]}
                     onPress={() => openEditForEntry(date, 0)}
                     activeOpacity={0.85}>
-                    <Text style={styles.workoutName} numberOfLines={1}>
+                    <Text style={[styles.workoutName, { color: textColor }]} numberOfLines={1}>
                       {w ? w.name : 'Gelöschtes Workout'} {done ? '✓' : ''}
                     </Text>
-                    <Text style={styles.workoutDetails} numberOfLines={1}>
+                    <Text style={[styles.workoutDetails, { color: subtextColor }]} numberOfLines={1}>
                       {typeof e.durationMinutes === 'number'
                         ? `${e.durationMinutes} Min.`
                         : w
@@ -292,10 +314,10 @@ export default function PlannerScreen() {
                 );
               })()}
               <TouchableOpacity
-                style={[styles.trainingChipAdd, styles.trainingChipFullHeight]}
+                style={[styles.trainingChipAdd, styles.trainingChipFullHeight, { borderColor, backgroundColor: cardBg }]}
                 onPress={() => handleDayPress(date)}
                 activeOpacity={0.85}>
-                <Text style={styles.addChipText}>+</Text>
+                <Text style={[styles.addChipText, { color: subtextColor }]}>+</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -306,13 +328,13 @@ export default function PlannerScreen() {
                 return (
                   <TouchableOpacity
                     key={`${e.workoutId}-${idx}`}
-                    style={styles.trainingChip}
+                    style={chipStyle}
                     onPress={() => openEditForEntry(date, idx)}
                     activeOpacity={0.85}>
-                    <Text style={styles.workoutName} numberOfLines={1}>
+                    <Text style={[styles.workoutName, { color: textColor }]} numberOfLines={1}>
                       {w ? w.name : 'Gelöschtes Workout'} {done ? '✓' : ''}
                     </Text>
-                    <Text style={styles.workoutDetails} numberOfLines={1}>
+                    <Text style={[styles.workoutDetails, { color: subtextColor }]} numberOfLines={1}>
                       {typeof e.durationMinutes === 'number'
                         ? `${e.durationMinutes} Min.`
                         : w
@@ -323,8 +345,11 @@ export default function PlannerScreen() {
                 );
               })}
               {entries.length < 3 && (
-                <TouchableOpacity style={styles.trainingChipAdd} onPress={() => handleDayPress(date)} activeOpacity={0.85}>
-                  <Text style={styles.addChipText}>+</Text>
+                <TouchableOpacity 
+                  style={[styles.trainingChipAdd, { borderColor, backgroundColor: cardBg }]} 
+                  onPress={() => handleDayPress(date)} 
+                  activeOpacity={0.85}>
+                  <Text style={[styles.addChipText, { color: subtextColor }]}>+</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -336,32 +361,36 @@ export default function PlannerScreen() {
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor }]}>
-      <StatusBar style="light" />
+      <StatusBar style={isLight ? 'dark' : 'light'} />
 
       <View
         style={styles.header}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-        <Text style={styles.subtitle}>Planner</Text>
+        <Text style={[styles.subtitle, { color: textColor }]}>Planner</Text>
       </View>
 
       <View style={styles.navBar} onLayout={(e) => setNavHeight(e.nativeEvent.layout.height)}>
-        <TouchableOpacity onPress={handlePrev} style={styles.navButton}>
-          <Text style={styles.navButtonText}>{'<'}</Text>
+        <TouchableOpacity 
+          onPress={handlePrev} 
+          style={[styles.navButton, { backgroundColor: cardBg, borderColor: isLight ? borderColor : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
+          <Text style={[styles.navButtonText, { color: textColor }]}>{'<'}</Text>
         </TouchableOpacity>
 
         <View style={styles.navCenter}>
-          <Text style={styles.dateRangeText}>
+          <Text style={[styles.dateRangeText, { color: textColor }]}>
             {formatDateRange(days[0])} - {formatDateRange(days[days.length - 1])}
           </Text>
           <TouchableOpacity onPress={handleToday} style={styles.todayButton}>
-            <Text style={styles.todayButtonIcon} accessibilityLabel="Heute">
+            <Text style={[styles.todayButtonIcon, { color: textColor }]} accessibilityLabel="Heute">
               ⟲
             </Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity onPress={handleNext} style={styles.navButton}>
-          <Text style={styles.navButtonText}>{'>'}</Text>
+        <TouchableOpacity 
+          onPress={handleNext} 
+          style={[styles.navButton, { backgroundColor: cardBg, borderColor: isLight ? borderColor : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
+          <Text style={[styles.navButtonText, { color: textColor }]}>{'>'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -399,10 +428,10 @@ export default function PlannerScreen() {
                   <View style={[styles.dayItem, { height: rowLayout.rowH, marginBottom: 0 }]}>
                     <View style={styles.dateContainer} />
                     <TouchableOpacity
-                      style={[styles.planContainer, styles.routinePlanContainer]}
+                      style={[styles.planContainer, styles.routinePlanContainer, { backgroundColor: cardBg, borderColor }]}
                       onPress={() => router.push('/planner-settings')}
                       activeOpacity={0.85}>
-                      <Text style={styles.routinePlanText}>Routinetage setzen</Text>
+                      <Text style={[styles.routinePlanText, { color: accentColor }]}>Routinetage setzen</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -446,15 +475,6 @@ export default function PlannerScreen() {
             if (editDate) {
                 setSelectedDateForPicker(editDate);
                 setWorkoutPickerVisible(true);
-                // Achtung: Wenn wir hier ein Workout wählen, wird 'onWorkoutSelected' aufgerufen.
-                // Das fügt aktuell hinzu (addWorkoutToDate).
-                // Wir wollen aber "Ersetzen"?
-                // Das Original (Line 314) macht: savePlannedWorkout(dateKey, [...nextEntries, workout.id]) -> also HINZUFÜGEN.
-                // Wenn man "Workout ändern" will, müsste man das alte löschen und das neue hinzufügen.
-                // Im Original war das Verhalten: Es fügt einfach ein weiteres hinzu (sofern <3).
-                // Falls voll -> Pech.
-                // Ich lasse das Verhalten so, aber idealerweise wäre es "Replace".
-                // TODO: Replace Logic implementieren? Ich lasse es wie Original.
             }
         }}
         onEditDetails={onEditDetails}
@@ -487,7 +507,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 24,
-    color: '#ffffff',
     fontWeight: 'bold',
   },
   navBar: {
@@ -501,13 +520,11 @@ const styles = StyleSheet.create({
   },
   navButton: {
     padding: 10,
-    backgroundColor: '#3a3a3a',
     borderRadius: 8,
     width: 44,
     alignItems: 'center',
   },
   navButtonText: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -520,13 +537,11 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   todayButtonIcon: {
-    color: '#e5e7eb',
     fontSize: 36,
     lineHeight: 36,
     fontWeight: '900',
   },
   dateRangeText: {
-    color: '#fff',
     fontSize: 16,
   },
   listContent: {
@@ -551,33 +566,27 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   dayName: {
-    color: '#aaaaaa',
     fontSize: 14,
     fontWeight: 'bold',
     textTransform: 'uppercase',
   },
   dateText: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
   },
   planContainer: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#333333',
     height: '100%',
     justifyContent: 'center',
   },
   planRowContainer: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
     borderRadius: 12,
     padding: 0,
     borderWidth: 1,
-    borderColor: '#333333',
     height: '100%',
     justifyContent: 'center',
   },
@@ -595,12 +604,10 @@ const styles = StyleSheet.create({
   trainingChip: {
     flex: 1,
     minWidth: 0,
-    backgroundColor: '#1a1a1a',
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderWidth: 1,
-    borderColor: '#333333',
     justifyContent: 'center',
   },
   trainingChipFullHeight: {
@@ -609,66 +616,35 @@ const styles = StyleSheet.create({
   trainingChipAdd: {
     flex: 1,
     minWidth: 0,
-    backgroundColor: '#141414',
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
     justifyContent: 'center',
     alignItems: 'center',
   },
   addChipText: {
-    color: '#aaaaaa',
     fontSize: 20,
     fontWeight: '900',
     lineHeight: 20,
   },
   routinePlanContainer: {
-    backgroundColor: '#171717',
-    borderColor: '#2a2a2a',
     alignItems: 'flex-start',
   },
   routinePlanText: {
-    color: 'rgba(134, 239, 172, 0.7)',
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'left',
   },
-  dayItemToday: {},
-  dateContainerToday: {
-    backgroundColor: 'rgba(74, 222, 128, 0.12)',
-    borderRadius: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(74, 222, 128, 0.35)',
-  },
-  dayNameToday: {
-    color: '#4ade80',
-  },
-  dateTextToday: {
-    color: '#4ade80',
-  },
-  planContainerToday: {
-    borderColor: 'rgba(74, 222, 128, 0.55)',
-    backgroundColor: '#161a16',
-  },
   workoutName: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
   },
   workoutDetails: {
-    color: '#aaaaaa',
     fontSize: 12,
   },
   emptyPlanText: {
-    color: '#555',
     fontSize: 14,
     fontStyle: 'italic',
   },
 });
-
-
-
-

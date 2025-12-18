@@ -1,29 +1,30 @@
 // @ts-nocheck
 import { Exercise, EXERCISES, getImageSource } from '@/constants/exercises';
+import { APP_THEME_COLORS } from '@/constants/theme';
 import { Workout, WorkoutExercise } from '@/types/interfaces';
 import {
-    getCustomExercises,
-    getSettings,
-    getWorkoutById,
-    saveWorkout,
+  getCustomExercises,
+  getSettings,
+  getWorkoutById,
+  saveWorkout,
 } from '@/utils/storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import DraggableFlatList, {
-    RenderItemParams,
+  RenderItemParams,
 } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -51,7 +52,7 @@ export default function CreateWorkoutScreen() {
   const [workoutName, setWorkoutName] = useState('');
   const [workoutTotalMinutes, setWorkoutTotalMinutes] = useState('');
   const [isTitleEditable, setIsTitleEditable] = useState(false);
-  const [backgroundColor, setBackgroundColor] = useState<string>('#2a2a2a');
+  const [backgroundColor, setBackgroundColor] = useState<string>(APP_THEME_COLORS.dark.background);
   const [selectedExercises, setSelectedExercises] =
     useState<WorkoutExercise[]>([]);
   const [allExercises, setAllExercises] = useState<Exercise[]>(EXERCISES);
@@ -66,9 +67,11 @@ export default function CreateWorkoutScreen() {
   );
   
   // Dynamische Farben
+  const theme = isDarkBackground ? APP_THEME_COLORS.dark : APP_THEME_COLORS.light;
+  const accentColor = theme.accent;
   const textColor = isDarkBackground ? '#ffffff' : '#111827';
   const subTextColor = isDarkBackground ? '#aaaaaa' : '#4b5563';
-  const cardBg = isDarkBackground ? '#2a2a2a' : '#ffffff';
+  const cardBg = isDarkBackground ? theme.cardBackground : theme.cardBackground; // Use theme cardBg
   const cardBorder = isDarkBackground ? '#333333' : '#d1d5db';
   const inputBg = isDarkBackground ? '#151515' : '#f9fafb';
   const inputBorder = isDarkBackground ? '#333333' : '#d1d5db';
@@ -267,11 +270,12 @@ export default function CreateWorkoutScreen() {
               }
             }}>
             <Text
-              style={
+              style={[
                 isTitleEditable
                   ? styles.titleConfirmIcon
-                  : styles.titleEditIcon
-              }>
+                  : styles.titleEditIcon,
+                { color: accentColor }
+              ]}>
               {isTitleEditable ? '✓' : '✎'}
             </Text>
           </Pressable>
@@ -330,9 +334,9 @@ export default function CreateWorkoutScreen() {
 
               <View style={styles.newExerciseEntryContainer}>
                 <Pressable
-                  style={styles.addExerciseButton}
+                  style={[styles.addExerciseButton, { backgroundColor: cardBg, borderColor: cardBorder, borderWidth: 1 }]}
                   onPress={() => router.push('/create-exercise')}>
-                  <Text style={styles.addExerciseButtonText}>
+                  <Text style={[styles.addExerciseButtonText, { color: accentColor }]}>
                     Neue Übung anlegen
                   </Text>
                 </Pressable>
@@ -368,7 +372,7 @@ export default function CreateWorkoutScreen() {
                     style={[
                       styles.exerciseCard,
                       { backgroundColor: cardBg, borderColor: cardBorder },
-                      isActive && styles.exerciseCardActive,
+                      isActive && { borderColor: accentColor },
                     ]}>
                     <TouchableOpacity
                       style={styles.selectedExerciseHeader}
@@ -422,10 +426,10 @@ export default function CreateWorkoutScreen() {
               ListFooterComponent={
                 <View style={styles.footer}>
                   <Pressable
-                    style={[styles.exerciseCard, styles.saveCard]}
+                    style={[styles.exerciseCard, styles.saveCard, { backgroundColor: cardBg, borderColor: cardBorder }]}
                     onPress={handleSave}
                     testID="create-save-workout-button">
-                    <Text style={styles.saveButtonText}>
+                    <Text style={[styles.saveButtonText, { color: accentColor }]}>
                       {workoutId
                         ? 'Workout aktualisieren'
                         : 'Workout Speichern'}
@@ -446,7 +450,7 @@ export default function CreateWorkoutScreen() {
           visible={!!infoExercise}
           onRequestClose={() => setInfoExercise(null)}>
           <View style={styles.infoModalOverlay}>
-            <View style={[styles.infoModalCard, { backgroundColor: isDarkBackground ? '#111827' : '#ffffff', borderColor: '#4ade80' }]}>
+            <View style={[styles.infoModalCard, { backgroundColor: isDarkBackground ? '#111827' : '#ffffff', borderColor: accentColor }]}>
               <Text style={[styles.infoModalTitle, { color: isDarkBackground ? '#ffffff' : '#111827' }]}>{infoExercise!.name}</Text>
               <Image
                 source={getImageSource(
@@ -456,7 +460,7 @@ export default function CreateWorkoutScreen() {
                 style={styles.infoModalImage}
                 resizeMode="cover"
               />
-              <Text style={styles.infoModalMeta}>
+              <Text style={[styles.infoModalMeta, { color: accentColor }]}>
                 {infoExercise!.type === 'duration'
                   ? `${infoExercise!.amount ?? 0} Sekunden`
                   : `${infoExercise!.amount ?? 0} Wiederholungen`}
@@ -468,7 +472,7 @@ export default function CreateWorkoutScreen() {
               ) : null}
 
               <Pressable
-                style={styles.infoModalCloseButton}
+                style={[styles.infoModalCloseButton, { backgroundColor: accentColor }]}
                 onPress={() => setInfoExercise(null)}>
                 <Text style={styles.infoModalCloseText}>Schließen</Text>
               </Pressable>
@@ -539,11 +543,9 @@ const styles = StyleSheet.create({
   },
   titleEditIcon: {
     fontSize: 26,
-    color: '#4ade80',
   },
   titleConfirmIcon: {
     fontSize: 26,
-    color: '#4ade80',
     fontWeight: '700',
   },
   scrollView: {
@@ -618,7 +620,6 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#4ade80',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
@@ -689,15 +690,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
   },
   saveCard: {
-    backgroundColor: '#4ade80',
-    borderColor: '#4ade80',
     justifyContent: 'center',
     alignItems: 'center',
   },
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1a1a1a',
     textAlign: 'center',
   },
   exerciseImage: {
@@ -715,7 +713,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   addExerciseButton: {
-    backgroundColor: '#4ade80',
     height: 56,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -726,7 +723,6 @@ const styles = StyleSheet.create({
   addExerciseButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1a1a1a',
     textAlign: 'center',
   },
   newExerciseCard: {
@@ -735,7 +731,6 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#4ade80',
   },
   newExerciseTitle: {
     fontSize: 18,
@@ -762,7 +757,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   typeButtonActive: {
-    borderColor: '#4ade80',
     backgroundColor: '#2a2a2a',
   },
   typeButtonText: {
@@ -771,7 +765,6 @@ const styles = StyleSheet.create({
     color: '#aaaaaa',
   },
   typeButtonTextActive: {
-    color: '#4ade80',
   },
   newExerciseActions: {
     flexDirection: 'row',
@@ -794,7 +787,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#4ade80',
     alignItems: 'center',
   },
   saveNewExerciseButtonText: {
@@ -803,7 +795,6 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
   },
   exerciseCardActive: {
-    borderColor: '#4ade80',
   },
   removeExerciseButton: {
     marginLeft: 8,
@@ -923,7 +914,6 @@ const styles = StyleSheet.create({
   infoModalMeta: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#4ade80',
     marginBottom: 8,
   },
   infoModalText: {
@@ -936,7 +926,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 999,
-    backgroundColor: '#4ade80',
   },
   infoModalCloseText: {
     fontSize: 14,

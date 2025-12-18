@@ -1,28 +1,29 @@
-import { Workout } from '@/types/interfaces';
 import { OnboardingOverlay } from '@/components/OnboardingOverlay';
+import { APP_THEME_COLORS, isLightColor } from '@/constants/theme';
+import { Workout } from '@/types/interfaces';
 import {
-    PlannedWorkoutEntry,
-    PlannedWorkoutsStoredValue,
-    deleteWorkout,
-    getHasSeenOnboarding,
-    getPlannedWorkouts,
-    getPlannerSettings,
-    getSettings,
-    getWorkouts,
-    normalizePlannedValueToEntries,
-    setHasSeenOnboarding,
+  PlannedWorkoutEntry,
+  PlannedWorkoutsStoredValue,
+  deleteWorkout,
+  getHasSeenOnboarding,
+  getPlannedWorkouts,
+  getPlannerSettings,
+  getSettings,
+  getWorkouts,
+  normalizePlannedValueToEntries,
+  setHasSeenOnboarding,
 } from '@/utils/storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Pressable,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -81,7 +82,7 @@ export default function WorkoutScreen() {
   const router = useRouter();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [showFabMenu, setShowFabMenu] = useState(false);
-  const [backgroundColor, setBackgroundColor] = useState<string>('#2a2a2a');
+  const [backgroundColor, setBackgroundColor] = useState<string>(APP_THEME_COLORS.dark.background);
   const [planned, setPlanned] = useState<Record<string, any>>({});
   const [plannerSettings, setPlannerSettings] = useState<{ defaultSchedule: { [day: number]: string[] } }>({
     defaultSchedule: {},
@@ -90,7 +91,7 @@ export default function WorkoutScreen() {
 
   useEffect(() => {
     getHasSeenOnboarding().then((seen) => {
-      if (!seen) setShowOnboarding(true);
+    if (!seen) setShowOnboarding(true);
     });
   }, []);
 
@@ -101,7 +102,6 @@ export default function WorkoutScreen() {
 
   const loadWorkouts = useCallback(async () => {
     const loadedWorkouts = await getWorkouts();
-    // Sortiere nach Erstellungsdatum (neueste zuerst)
     loadedWorkouts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     setWorkouts(loadedWorkouts);
   }, []);
@@ -111,7 +111,6 @@ export default function WorkoutScreen() {
     setBackgroundColor(settings.appBackgroundColor);
   }, []);
 
-  // Lade Workouts beim ersten Mount und wenn Screen fokussiert wird
   useFocusEffect(
     useCallback(() => {
       loadWorkouts();
@@ -129,19 +128,18 @@ export default function WorkoutScreen() {
     }, [loadWorkouts, loadSettings])
   );
   
-  const { r, g, b } = parseHexColor(backgroundColor);
-  const bgLuminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  const isLightBg = bgLuminance > 0.7;
+  const isLightBg = isLightColor(backgroundColor);
   const statusBarStyle = isLightBg ? 'dark' : 'light';
+  const theme = isLightBg ? APP_THEME_COLORS.light : APP_THEME_COLORS.dark;
+  const accentColor = theme.accent;
+  const themeCardBg = theme.cardBackground;
   
-  // Farben basierend auf Hintergrundmodus
-  const mainTitleColor = isLightBg ? '#111827' : '#ffffff';
   const subTitleColor = isLightBg ? '#4b5563' : '#aaaaaa';
   const emptyStateTextColor = isLightBg ? '#111827' : '#ffffff';
   const emptyStateSubtextColor = isLightBg ? '#4b5563' : '#aaaaaa';
   
-  // Button Farben für Light Mode anpassen
-  const buttonBgColor = isLightBg ? '#e5e7eb' : '#3a3a3a';
+  // Button Farben
+  const buttonBgColor = themeCardBg;
   const buttonBorderColor = isLightBg ? '#d1d5db' : '#555555';
   const buttonIconColor = isLightBg ? '#111827' : '#ffffff';
 
@@ -229,9 +227,9 @@ export default function WorkoutScreen() {
   };
 
   const renderWorkoutItem = ({ item }: { item: Workout }) => {
-    const { cardBackground, cardBorder, textColor, subtextColor } = getWorkoutCardColors(backgroundColor);
+    const { cardBackground: computedCardBg, cardBorder, textColor, subtextColor } = getWorkoutCardColors(backgroundColor);
     const plannedInfo = todayPlannedByWorkoutId.get(item.id);
-    const borderColor = plannedInfo ? '#4ade80' : cardBorder;
+    const borderColor = plannedInfo ? accentColor : cardBorder;
     const plannedLabelParts: string[] = [];
     if (plannedInfo) {
       plannedLabelParts.push(plannedInfo.entry.completed ? 'Heute gerockt!' : 'Heute geplant');
@@ -244,7 +242,7 @@ export default function WorkoutScreen() {
       <TouchableOpacity
         style={[
           styles.workoutItem,
-          { backgroundColor: cardBackground, borderColor },
+          { backgroundColor: computedCardBg, borderColor },
         ]}
         onPress={() => handleWorkoutPress(item)}
         activeOpacity={0.7}>
@@ -254,19 +252,19 @@ export default function WorkoutScreen() {
             {item.exercises.length} {item.exercises.length === 1 ? 'Übung' : 'Übungen'}
           </Text>
           {!!plannedInfo && (
-            <Text style={styles.workoutPlanned} numberOfLines={1}>
+            <Text style={[styles.workoutPlanned, { color: accentColor }]} numberOfLines={1}>
               {plannedLabel}
             </Text>
           )}
         </View>
         <View style={styles.actionButtons}>
           <Pressable
-            style={[styles.editButton, isLightBg && { backgroundColor: '#e5e7eb' }]}
+            style={[styles.editButton, { backgroundColor: themeCardBg }]}
             onPress={(e) => handleEditWorkout(item, e)}>
-            <Text style={styles.editButtonText}>✎</Text>
+            <Text style={[styles.editButtonText, { color: accentColor }]}>✎</Text>
           </Pressable>
           <Pressable
-            style={[styles.deleteButton, isLightBg && { backgroundColor: '#e5e7eb' }]}
+            style={[styles.deleteButton, { backgroundColor: themeCardBg }]}
             onPress={(e) => handleDeleteWorkout(item.id, e)}>
             <Text style={styles.deleteButtonText}>×</Text>
           </Pressable>
@@ -309,30 +307,34 @@ export default function WorkoutScreen() {
 
       <View style={styles.fabContainer}>
         {showFabMenu && (
-          <View style={[styles.fabMenu, isLightBg && { backgroundColor: '#ffffff', borderColor: '#d1d5db' }]}>
+          <View style={[styles.fabMenu, { backgroundColor: themeCardBg, borderColor: buttonBorderColor }]}>
             <TouchableOpacity
               style={[
                   styles.fabMenuItem, 
                   styles.fabMenuItemFirst, 
-                  isLightBg && { borderTopColor: '#d1d5db' }
+                  { borderTopColor: buttonBorderColor }
               ]}
               onPress={handleCreateWorkout}
               activeOpacity={0.8}>
-              <Text style={[styles.fabMenuItemText, isLightBg && { color: '#111827' }]}>Neues Workout</Text>
+              <Text style={[styles.fabMenuItemText, { color: buttonIconColor }]}>Neues Workout</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                   styles.fabMenuItem,
-                  isLightBg && { borderTopColor: '#d1d5db' }
+                  { borderTopColor: buttonBorderColor }
               ]}
               onPress={handleCreateExercise}
               activeOpacity={0.8}>
-              <Text style={[styles.fabMenuItemText, isLightBg && { color: '#111827' }]}>Neue Übung</Text>
+              <Text style={[styles.fabMenuItemText, { color: buttonIconColor }]}>Neue Übung</Text>
             </TouchableOpacity>
           </View>
         )}
         <TouchableOpacity
-          style={[styles.fab, showFabMenu && styles.fabActive]}
+          style={[
+            styles.fab, 
+            { backgroundColor: accentColor, shadowColor: accentColor },
+            showFabMenu && styles.fabActive
+          ]}
           onPress={handleFabPress}
           activeOpacity={0.8}>
           <Text style={styles.fabText}>{showFabMenu ? '×' : '+'}</Text>
@@ -398,7 +400,6 @@ const styles = StyleSheet.create({
   workoutPlanned: {
     marginTop: 6,
     fontSize: 13,
-    color: '#4ade80',
     fontWeight: '800',
   },
   actionButtons: {
@@ -417,7 +418,6 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     fontSize: 27,
-    color: '#4ade80',
     fontWeight: 'bold',
     lineHeight: 29,
   },
