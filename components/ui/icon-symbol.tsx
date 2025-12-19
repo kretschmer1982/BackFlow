@@ -22,6 +22,7 @@ const MAPPING = {
   'figure.run': 'directions-run',
   'calendar': 'calendar-today',
   'person.fill': 'person',
+  'chart.bar': 'bar-chart',
 } as IconMapping;
 
 /**

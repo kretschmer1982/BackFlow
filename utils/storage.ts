@@ -10,6 +10,74 @@ const PLANNED_WORKOUTS_KEY = '@backflow_planned_workouts';
 const PLANNER_SETTINGS_KEY = '@backflow_planner_settings';
 const HAS_SEEN_ONBOARDING_KEY = '@backflow_has_seen_onboarding';
 
+const CUSTOM_EXERCISE_ID_PREFIX = 'custom-';
+
+function normalizeImageValue(value: unknown): string | number | undefined {
+  if (typeof value === 'number') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+  return undefined;
+}
+
+function createCustomExerciseId(sequenceHint?: number): string {
+  return `${CUSTOM_EXERCISE_ID_PREFIX}${Date.now().toString(36)}-${sequenceHint ?? 0}-${Math.random()
+    .toString(36)
+    .slice(2, 6)}`;
+}
+
+function normalizeCustomExercisesData(rawList: unknown[]): { normalized: Exercise[]; changed: boolean } {
+  let changed = false;
+  const normalized: Exercise[] = rawList.map((item, index) => {
+    const partial = (item || {}) as Partial<Exercise>;
+    const hasValidId = typeof partial.id === 'string' && partial.id.trim().length > 0;
+    const id = hasValidId ? partial.id! : createCustomExerciseId(index);
+    const amount =
+      typeof partial.amount === 'number' && Number.isFinite(partial.amount)
+        ? Math.max(1, Math.round(partial.amount))
+        : 40;
+    const normalizedImage = normalizeImageValue(partial.image);
+    const exercise: Exercise = {
+      id,
+      name: typeof partial.name === 'string' ? partial.name : 'Unbenannte Übung',
+      type: partial.type === 'reps' ? 'reps' : 'duration',
+      amount,
+      instructions: typeof partial.instructions === 'string' ? partial.instructions : '',
+      ...(normalizedImage !== undefined ? { image: normalizedImage } : {}),
+      equipment: partial.equipment,
+      source: 'custom',
+    };
+    if (!hasValidId || partial.source !== 'custom') {
+      changed = true;
+    }
+    return exercise;
+  });
+  return { normalized, changed };
+}
+
+function prepareCustomExerciseForSave(exercise: Exercise): Exercise {
+  const sanitizedAmount =
+    typeof exercise.amount === 'number' && Number.isFinite(exercise.amount)
+      ? Math.max(1, Math.round(exercise.amount))
+      : 40;
+  const normalizedImage = normalizeImageValue(exercise.image);
+  return {
+    ...exercise,
+    id:
+      typeof exercise.id === 'string' && exercise.id.trim().length > 0
+        ? exercise.id
+        : createCustomExerciseId(),
+    amount: sanitizedAmount,
+    source: 'custom',
+    ...(normalizedImage !== undefined ? { image: normalizedImage } : {}),
+  };
+}
+
 export type TrainingReminderTimeOfDay = 'morning' | 'noon' | 'evening';
 
 // Typ für Einstellungen
@@ -245,7 +313,13 @@ export async function getWorkoutById(id: string): Promise<Workout | null> {
 export async function getCustomExercises(): Promise<Exercise[]> {
   try {
     const jsonValue = await AsyncStorage.getItem(CUSTOM_EXERCISES_KEY);
-    return jsonValue != null ? JSON.parse(jsonValue) : [];
+    const parsed = jsonValue != null ? JSON.parse(jsonValue) : [];
+    const inputList = Array.isArray(parsed) ? parsed : [];
+    const { normalized, changed } = normalizeCustomExercisesData(inputList);
+    if (changed) {
+      await AsyncStorage.setItem(CUSTOM_EXERCISES_KEY, JSON.stringify(normalized));
+    }
+    return normalized;
   } catch (error) {
     console.error('Fehler beim Laden der benutzerdefinierten Übungen:', error);
     return [];
@@ -256,18 +330,15 @@ export async function getCustomExercises(): Promise<Exercise[]> {
 export async function saveCustomExercise(exercise: Exercise): Promise<boolean> {
   try {
     const exercises = await getCustomExercises();
-    
-    // Prüfe ob Übung mit diesem Namen bereits existiert
-    const existingIndex = exercises.findIndex((e) => e.name === exercise.name);
-    
+    const normalizedExercise = prepareCustomExerciseForSave(exercise);
+
+    const existingIndex = exercises.findIndex((e) => e.id === normalizedExercise.id);
     if (existingIndex >= 0) {
-      // Aktualisiere existierende Übung
-      exercises[existingIndex] = exercise;
+      exercises[existingIndex] = normalizedExercise;
     } else {
-      // Füge neue Übung hinzu
-      exercises.push(exercise);
+      exercises.push(normalizedExercise);
     }
-    
+
     await AsyncStorage.setItem(CUSTOM_EXERCISES_KEY, JSON.stringify(exercises));
     return true;
   } catch (error) {
@@ -277,10 +348,10 @@ export async function saveCustomExercise(exercise: Exercise): Promise<boolean> {
 }
 
 // Benutzerdefinierte Übung löschen
-export async function deleteCustomExercise(name: string): Promise<boolean> {
+export async function deleteCustomExercise(id: string): Promise<boolean> {
   try {
     const exercises = await getCustomExercises();
-    const filteredExercises = exercises.filter((e) => e.name !== name);
+    const filteredExercises = exercises.filter((e) => e.id !== id);
     await AsyncStorage.setItem(CUSTOM_EXERCISES_KEY, JSON.stringify(filteredExercises));
     return true;
   } catch (error) {

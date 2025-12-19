@@ -1,8 +1,9 @@
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Workout } from '@/types/interfaces';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMemo } from 'react';
+import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function parseHexColor(hex: string) {
   const sanitized = hex.replace('#', '');
@@ -24,32 +25,63 @@ function isDarkColor(hex: string) {
 interface RunCompletedViewProps {
   workout: Workout;
   backgroundColor: string;
-  onGoHome: () => void;
+  onContinueWorkout: () => void;
+  onViewStats: () => void;
 }
+
+const HAPPY_AVATAR = require('../../assets/images/avatar_happy.png');
 
 export function RunCompletedView({
   workout,
   backgroundColor,
-  onGoHome,
+  onContinueWorkout,
+  onViewStats,
 }: RunCompletedViewProps) {
   const isDark = useMemo(() => isDarkColor(backgroundColor), [backgroundColor]);
   const textColor = isDark ? '#ffffff' : '#111827';
-  const subTextColor = isDark ? '#aaaaaa' : '#4b5563';
-  const accentColor = isDark ? '#4ade80' : '#16a34a';
+  const captionColor = isDark ? '#cbd5f5' : '#6b7280';
+  const buttonBg = isDark ? '#131a24' : '#f5f6fb';
+  const iconColor = isDark ? '#f1f5f9' : '#111827';
+
+  const { width } = useWindowDimensions();
+  const actions: Array<{
+    key: string;
+    icon: 'figure.run' | 'chart.bar';
+    label: string;
+    onPress: () => void;
+  }> = [
+    { key: 'workout', icon: 'figure.run', label: 'Weiteres Workout', onPress: onContinueWorkout },
+    { key: 'stats', icon: 'chart.bar', label: 'Statistik', onPress: onViewStats },
+  ];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={styles.completedScreen}>
         <View style={styles.completedContent}>
-          <Text style={styles.completedTitle}>🎉</Text>
-          <Text style={[styles.completedText, { color: textColor }]}>Glückwunsch!</Text>
-          <Text style={[styles.completedSubtext, { color: subTextColor }]}>Workout beendet</Text>
-          <Text style={[styles.completedWorkoutName, { color: accentColor }]}>{workout.name}</Text>
+          <Image
+            source={HAPPY_AVATAR}
+            style={[
+              styles.avatarImage,
+              { width: width - 48, height: width - 48, maxWidth: 420, maxHeight: 420 },
+            ]}
+            resizeMode="contain"
+          />
+          <Text style={[styles.avatarCaption, { color: captionColor }]} numberOfLines={1}>
+            {workout.name}
+          </Text>
         </View>
-        <Pressable style={styles.homeButton} onPress={onGoHome}>
-          <Text style={styles.homeButtonText}>🏠</Text>
-        </Pressable>
+        <View style={styles.actionsRow}>
+          {actions.map((action) => (
+            <Pressable
+              key={action.key}
+              style={[styles.actionButton, { backgroundColor: buttonBg }]}
+              onPress={action.onPress}>
+              <IconSymbol name={action.icon as any} size={32} color={iconColor} />
+              <Text style={[styles.actionLabel, { color: textColor }]}>{action.label}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -67,37 +99,39 @@ const styles = StyleSheet.create({
   },
   completedContent: {
     alignItems: 'center',
-    marginBottom: 60,
+    marginBottom: 40,
   },
-  completedTitle: {
-    fontSize: 80,
-    marginBottom: 24,
+  avatarImage: {
+    width: 220,
+    height: 220,
+    borderRadius: 120,
+    marginBottom: 16,
   },
-  completedText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  completedSubtext: {
-    fontSize: 24,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  completedWorkoutName: {
-    fontSize: 20,
+  avatarCaption: {
+    fontSize: 18,
     fontWeight: '600',
-    textAlign: 'center',
   },
-  homeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 999,
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  homeButtonText: {
-    fontSize: 64,
-    fontWeight: 'bold',
-    color: '#ffffff',
+  actionButton: {
+    marginHorizontal: 8,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 140,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  actionLabel: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

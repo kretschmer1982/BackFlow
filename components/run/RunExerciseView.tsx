@@ -5,6 +5,7 @@ import { WorkoutExercise } from '@/types/interfaces';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
 import {
+  Alert,
   Dimensions,
   Image,
   Pressable,
@@ -26,6 +27,8 @@ interface RunExerciseViewProps {
   onExerciseTap: () => void;
   onSkip: () => void;
   onCancel: () => void;
+  onPause: () => void;
+  isPaused: boolean;
 }
 
 export function RunExerciseView({
@@ -39,6 +42,8 @@ export function RunExerciseView({
   onExerciseTap,
   onSkip,
   onCancel,
+  onPause,
+  isPaused,
 }: RunExerciseViewProps) {
   const isRepsExercise = currentExercise.type === 'reps';
   const windowHeight = Dimensions.get('window').height;
@@ -60,6 +65,24 @@ export function RunExerciseView({
       .padStart(2, '0')}`;
   };
 
+  const handleCancelPress = () => {
+    Alert.alert(
+      'Training abbrechen',
+      'Möchtest du das Training wirklich abbrechen?',
+      [
+        {
+          text: 'Nein',
+          style: 'cancel',
+        },
+        {
+          text: 'Ja, abbrechen',
+          style: 'destructive',
+          onPress: onCancel,
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -77,34 +100,28 @@ export function RunExerciseView({
           </View>
 
           <Image
-            source={getImageSource(
-              currentExercise.name,
-              currentExercise.image
-            )}
+            source={getImageSource(currentExercise)}
             style={[styles.exerciseImage, { width: imageSize, height: imageSize }]}
             resizeMode="contain"
           />
           
-          <View style={styles.timerContainer}>
-            {isRepsExercise ? (
-              <Text style={[styles.repsText, { color: timerColor }]}>{currentExercise.amount} x</Text>
-            ) : (
-              <Text style={[styles.timerText, { color: timerColor }]}>
-                {formatTime(timeRemaining)}
-              </Text>
-            )}
-            {isRepsExercise && (
-              <Text style={[styles.stopwatchText, { color: textColor }]}>
-                {formatTime(elapsedTime)}
-              </Text>
-            )}
-          </View>
+        <View style={styles.headerRow}>
+          <Text style={[styles.letsGoText, { color: textColor }]}>LET'S GO:</Text>
+          <Text style={[styles.timerText, { color: timerColor }]}>
+            {isRepsExercise ? `${currentExercise.amount} x` : `${timeRemaining}s`}
+          </Text>
+        </View>
+        {isRepsExercise && (
+          <Text style={[styles.stopwatchText, { color: textColor }]}>
+            {formatTime(elapsedTime)}
+          </Text>
+        )}
 
           <View style={styles.exerciseDisplay}>
             <Text style={[styles.currentExerciseText, { color: textColor }]}>
               {currentExercise.name}
             </Text>
-            <Text style={[styles.instructionsText, { color: textColor }]}>
+          <Text style={[styles.instructionsText, { color: subTextColor }]}>
               {currentExercise.instructions}
             </Text>
             {isRepsExercise && (
@@ -114,15 +131,22 @@ export function RunExerciseView({
         </TouchableOpacity>
 
         <View style={styles.buttonContainer}>
-          <Pressable 
-            style={[styles.cancelButton, { backgroundColor: cardBg }]} 
-            onPress={onCancel}>
-            <Text style={[styles.cancelButtonText, { color: deleteColor }]}>×</Text>
+          <Pressable
+            style={[styles.actionButton, { backgroundColor: cardBg }]}
+            onPress={handleCancelPress}>
+            <Text style={[styles.actionButtonText, { color: deleteColor }]}>×</Text>
           </Pressable>
-          <Pressable 
-            style={[styles.skipButton, { backgroundColor: accentColor, borderColor: accentColor }]} 
+          <Pressable
+            style={[styles.actionButton, { backgroundColor: cardBg }]}
+            onPress={onPause}>
+            <Text style={[styles.actionButtonText, { color: textColor }]}>
+              {isPaused ? 'Fortsetzen' : 'Pause'}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.actionButton, { backgroundColor: cardBg }]}
             onPress={onSkip}>
-            <Text style={[styles.skipButtonText, { color: isDark ? '#1a1a1a' : '#ffffff' }]}>Skip</Text>
+            <Text style={[styles.actionButtonText, { color: textColor }]}>Skip</Text>
           </Pressable>
         </View>
       </View>
@@ -151,6 +175,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     marginTop: 10,
+    gap: 12,
   },
   roundInfo: {
     marginTop: 10,
@@ -161,18 +186,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     opacity: 0.9,
   },
-  timerContainer: {
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
     marginVertical: 20,
   },
   timerText: {
-    fontSize: 32, // Reduziert von 72
+    fontSize: 32,
     fontWeight: 'bold',
     letterSpacing: 4,
   },
   repsText: {
-    fontSize: 32, // Reduziert von 80
+    fontSize: 32,
     fontWeight: 'bold',
     letterSpacing: 4,
   },
@@ -194,6 +221,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 1,
     marginBottom: 16,
+  },
+  letsGoText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    letterSpacing: 2,
   },
   instructionsText: {
     fontSize: 24,
@@ -242,5 +275,18 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 10,
     marginBottom: 10,
+  },
+  actionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 90,
+    height: 50,
+  },
+  actionButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
   },
 });

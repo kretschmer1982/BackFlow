@@ -453,10 +453,7 @@ export default function CreateWorkoutScreen() {
             <View style={[styles.infoModalCard, { backgroundColor: isDarkBackground ? '#111827' : '#ffffff', borderColor: accentColor }]}>
               <Text style={[styles.infoModalTitle, { color: isDarkBackground ? '#ffffff' : '#111827' }]}>{infoExercise!.name}</Text>
               <Image
-                source={getImageSource(
-                  infoExercise!.name,
-                  infoExercise!.image
-                )}
+                source={getImageSource(infoExercise!)}
                 style={styles.infoModalImage}
                 resizeMode="cover"
               />

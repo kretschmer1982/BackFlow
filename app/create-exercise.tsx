@@ -40,7 +40,6 @@ export default function CreateExerciseScreen() {
     type: 'duration',
     amount: 40,
     instructions: '',
-    image: 'https://placehold.co/600x400/png?text=New+Exercise',
   });
 
   useEffect(() => {
@@ -75,11 +74,12 @@ export default function CreateExerciseScreen() {
     }
 
     const fullExercise: Exercise = {
+      id: '',
       name: exercise.name.trim(),
       type: exercise.type || 'duration',
       amount: exercise.amount || 40,
       instructions: exercise.instructions.trim(),
-      image: exercise.image || 'https://placehold.co/600x400/png?text=New+Exercise',
+      source: 'custom',
     };
 
     // Prüfe ob Übung mit diesem Namen bereits existiert

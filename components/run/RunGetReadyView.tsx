@@ -23,6 +23,8 @@ interface RunGetReadyViewProps {
   backgroundColor: string;
   onSkip: () => void;
   onCancel: () => void;
+  onPause: () => void;
+  isPaused: boolean;
 }
 
 export function RunGetReadyView({
@@ -34,6 +36,8 @@ export function RunGetReadyView({
   backgroundColor,
   onSkip,
   onCancel,
+  onPause,
+  isPaused,
 }: RunGetReadyViewProps) {
   const windowHeight = Dimensions.get('window').height;
   const imageSize = windowHeight * 0.35;
@@ -76,22 +80,19 @@ export function RunGetReadyView({
         </View>
 
         <Image
-          source={getImageSource(currentExercise.name, currentExercise.image)}
+          source={getImageSource(currentExercise)}
           style={[styles.exerciseImage, { width: imageSize, height: imageSize }]}
           resizeMode="contain"
         />
-        
-        <View style={styles.timerContainer}>
+
+        <View style={styles.headerRow}>
+          <Text style={[styles.getReadyText, { color: textColor }]}>GET READY:</Text>
           <Text style={[styles.timerText, { color: timerColor }]}>{timeRemaining}</Text>
         </View>
 
         <View style={styles.exerciseDisplay}>
-          <Text style={[styles.getReadyText, { color: textColor }]} numberOfLines={1} adjustsFontSizeToFit>
-            GET READY
-          </Text>
-          
           <Text style={[styles.nextExerciseName, { color: textColor }]}>{currentExercise.name}</Text>
-          
+
           {currentExercise.type === 'duration' ? (
             <Text style={[styles.nextExerciseInfo, { color: textColor }]}>
               {currentExercise.amount}s
@@ -108,15 +109,22 @@ export function RunGetReadyView({
         </View>
 
         <View style={styles.buttonContainer}>
-          <Pressable 
-            style={[styles.cancelButton, { backgroundColor: cardBg }]} 
+          <Pressable
+            style={[styles.actionButton, { backgroundColor: cardBg }]}
             onPress={handleCancelPress}>
-            <Text style={[styles.cancelButtonText, { color: deleteColor }]}>×</Text>
+            <Text style={[styles.actionButtonText, { color: deleteColor }]}>×</Text>
           </Pressable>
-          <Pressable 
-            style={[styles.skipButton, { backgroundColor: accentColor, borderColor: accentColor }]} 
+          <Pressable
+            style={[styles.actionButton, { backgroundColor: cardBg }]}
+            onPress={onPause}>
+            <Text style={[styles.actionButtonText, { color: textColor }]}>
+              {isPaused ? 'Fortsetzen' : 'Pause'}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.actionButton, { backgroundColor: cardBg }]}
             onPress={onSkip}>
-            <Text style={[styles.skipButtonText, { color: isDark ? '#1a1a1a' : '#ffffff' }]}>Skip</Text>
+            <Text style={[styles.actionButtonText, { color: textColor }]}>Skip</Text>
           </Pressable>
         </View>
       </View>
@@ -142,9 +150,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     opacity: 0.9,
   },
-  timerContainer: {
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
     marginVertical: 20,
   },
   timerText: {
@@ -154,25 +164,25 @@ const styles = StyleSheet.create({
   },
   exerciseDisplay: {
     flex: 1,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
   },
   getReadyText: {
-    fontSize: 20,
+    fontSize: 32,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 8,
     letterSpacing: 2,
   },
   nextExerciseName: {
-    fontSize: 22, // Reduziert um ca. 40% (von 36)
-    fontWeight: '600',
+    fontSize: 32,
+    fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 4,
+    letterSpacing: 1,
+    marginBottom: 16,
   },
   nextExerciseInfo: {
-    fontSize: 15, // Reduziert um ca. 40% (von 24)
+    fontSize: 24,
     opacity: 0.7,
     textAlign: 'center',
     marginBottom: 12,
@@ -184,12 +194,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     lineHeight: 26,
   },
+  actionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 90,
+    height: 50,
+  },
+  actionButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
     marginTop: 10,
+    gap: 12,
   },
   skipButton: {
     paddingVertical: 12,

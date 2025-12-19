@@ -3,73 +3,9 @@ import { Workout, WorkoutExercise } from '@/types/interfaces';
 import { useBeepPlayer } from '@/utils/sound';
 import { getSettings, getWorkoutById } from '@/utils/storage';
 import * as Speech from 'expo-speech';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 export type WorkoutState = 'getReady' | 'exercise' | 'completed';
-
-function detectExerciseTitleLanguageTag(title: string): 'de-DE' | 'en-US' {
-  const t = (title || '').trim();
-  if (!t) return 'de-DE';
-
-  // Harte Indikatoren für Deutsch
-  if (/[äöüßÄÖÜ]/.test(t)) return 'de-DE';
-
-  const tokens = t
-    .toLowerCase()
-    .replace(/[^a-zA-Zäöüß0-9\s-]/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean);
-
-  const germanWords = new Set([
-    'links',
-    'rechts',
-    'zur',
-    'zum',
-    'im',
-    'in',
-    'mit',
-    'ohne',
-    'und',
-    'knie',
-    'brust',
-    'rumpfrotation',
-  ]);
-  const englishWords = new Set([
-    'plank',
-    'superman',
-    'bird-dog',
-    'bird',
-    'dog',
-    'glute',
-    'bridge',
-    'cat-cow',
-    'cat',
-    'cow',
-    'sit-ups',
-    'sit',
-    'ups',
-    'side',
-    'reverse',
-    'dead',
-    'bug',
-    'childs',
-    'pose',
-    'hip',
-    'hinge',
-    'wall',
-  ]);
-
-  for (const tok of tokens) {
-    if (germanWords.has(tok)) return 'de-DE';
-  }
-  for (const tok of tokens) {
-    if (englishWords.has(tok)) return 'en-US';
-  }
-
-  // Fallback-Heuristik: nur ASCII-Buchstaben/Trenner -> eher Englisch, sonst Deutsch
-  const asciiOnly = /^[\x00-\x7F]+$/.test(t);
-  return asciiOnly ? 'en-US' : 'de-DE';
-}
 
 interface UseRunWorkoutParams {
   workoutId?: string;
@@ -88,7 +24,7 @@ interface UseRunWorkoutResult {
   sessionDurationMinutes: number;
   silentFinishSignalId: number;
   isPaused: boolean;
-  setIsPaused: (value: boolean) => void;
+  setIsPaused: Dispatch<SetStateAction<boolean>>;
   handlePhaseComplete: () => Promise<void>;
   handleExerciseComplete: () => Promise<void>;
   handleSkip: () => void;
@@ -126,6 +62,7 @@ export function useRunWorkout({
   const workoutStateRef = useRef<WorkoutState>('getReady');
   const [currentRound, setCurrentRound] = useState(1);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+  const currentExerciseIndexRef = useRef<number>(0);
   const [timeRemaining, setTimeRemaining] =
     useState(GET_READY_DURATION);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -138,10 +75,9 @@ export function useRunWorkout({
   const isPausedRef = useRef<boolean>(false);
   const enableBeepRef = useRef<boolean>(true);
   const timeRemainingRef = useRef<number>(GET_READY_DURATION);
+  const currentExerciseRef = useRef<WorkoutExercise | null>(null);
 
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(
-    null
-  );
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const TOTAL_ROUNDS = 1; // Eine Runde pro Workout
   const { playBeep, playDoubleBeep } = useBeepPlayer();
   const phaseCompleteInFlightRef = useRef(false);
@@ -149,6 +85,7 @@ export function useRunWorkout({
   const lastPraiseRef = useRef<string>('');
   const lastPraiseAtRef = useRef<number>(0);
   const nextSpeakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const workoutRef = useRef<Workout | null>(null);
 
   useEffect(() => {
     workoutStateRef.current = workoutState;
@@ -165,6 +102,15 @@ export function useRunWorkout({
   useEffect(() => {
     timeRemainingRef.current = timeRemaining;
   }, [timeRemaining]);
+
+  useEffect(() => {
+    currentExerciseIndexRef.current = currentExerciseIndex;
+  }, [currentExerciseIndex]);
+
+  useEffect(() => {
+    workoutRef.current = workout;
+  }, [workout]);
+
 
   // Workout laden
   useEffect(() => {
@@ -218,13 +164,14 @@ export function useRunWorkout({
     if (!enableBeep) return;
 
     const praises = [
-      'Geschafft!',
-      'Großartig!',
-      'Fertig!',
-      'Klasse!',
-      'Mega!',
-      'Stark! Weiter so!',
-      'Sehr gut!',
+      'Stark gemacht, geschafft!',
+      'Sehr gut durchgezogen!',
+      'Einfach spitze, lit!',
+      'Übung beendet, klasse!',
+      'Stolz auf dich!',
+      'Fokus gehalten, geschafft!',
+      'Bravourös gemeistert, mega!',
+      'Richtig gut gemacht!',
     ] as const;
     // Zufällig, aber nicht direkt wiederholen
     let next = praises[Math.floor(Math.random() * praises.length)];
@@ -253,6 +200,10 @@ export function useRunWorkout({
     if (!workout || workout.exercises.length === 0) return null;
     return normalizeExercise(workout.exercises[currentExerciseIndex]);
   }, [workout, currentExerciseIndex, normalizeExercise]);
+
+  useEffect(() => {
+    currentExerciseRef.current = getCurrentExercise();
+  }, [getCurrentExercise]);
 
   const moveToNextExercise = useCallback(() => {
     if (!workout) return;
@@ -308,6 +259,11 @@ export function useRunWorkout({
     }
   }, [workoutState, getCurrentExercise, moveToNextExercise, safeSpeakPraise, safePlayStartSignal, triggerSilentFinishSignal]);
 
+  const handlePhaseCompleteRef = useRef(handlePhaseComplete);
+  useEffect(() => {
+    handlePhaseCompleteRef.current = handlePhaseComplete;
+  }, [handlePhaseComplete]);
+
   const handleExerciseComplete = useCallback(async () => {
     const exercise = getCurrentExercise();
     if (exercise && exercise.type === 'reps') {
@@ -324,60 +280,43 @@ export function useRunWorkout({
 
   // Timer-Logik
   useEffect(() => {
-    if (!workout || isPaused || workoutState === 'completed') {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+    if (intervalRef.current) {
       return;
     }
 
-    const exercise = getCurrentExercise();
-    if (!exercise) return;
+    intervalRef.current = setInterval(() => {
+      const state = workoutStateRef.current;
+      if (state === 'completed') return;
+      if (isPausedRef.current) return;
 
-    // Safety: altes Interval immer stoppen (auch wenn cleanup aus irgendeinem Grund nicht lief)
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+      const exercise = currentExerciseRef.current;
+      if (!exercise) return;
 
-    if (workoutState === 'getReady') {
-      intervalRef.current = setInterval(() => {
+      const advanceCountdown = () => {
         setTimeRemaining((prev) => {
           const safePrev = Number.isFinite(prev) ? prev : 1;
           if (safePrev <= 1) {
-            // Interval sofort stoppen, damit der Phasenwechsel nicht mehrfach getriggert wird
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-              intervalRef.current = null;
-            }
-            void handlePhaseComplete();
+            void handlePhaseCompleteRef.current?.();
             return 0;
           }
           return safePrev - 1;
         });
-      }, 1000);
-    } else if (workoutState === 'exercise' && exercise.type === 'duration') {
-      intervalRef.current = setInterval(() => {
-        setTimeRemaining((prev) => {
-          const safePrev = Number.isFinite(prev) ? prev : 1;
-          if (safePrev <= 1) {
-            // Interval sofort stoppen, damit der Phasenwechsel nicht mehrfach getriggert wird
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-              intervalRef.current = null;
-            }
-            void handlePhaseComplete();
-            return 0;
-          }
-          return safePrev - 1;
-        });
-      }, 1000);
-    } else if (workoutState === 'exercise' && exercise.type === 'reps') {
-      intervalRef.current = setInterval(() => {
+      };
+
+      if (state === 'getReady' || (state === 'exercise' && exercise.type === 'duration')) {
+        advanceCountdown();
+      } else if (state === 'exercise' && exercise.type === 'reps') {
         setElapsedTime((prev) => (Number.isFinite(prev) ? prev + 1 : 1));
-      }, 1000);
-    }
+      }
+
+      if (__DEV__) {
+        console.debug('useRunWorkout timer tick', {
+          state,
+          exercise: exercise.name,
+          timeRemaining: timeRemainingRef.current,
+        });
+      }
+    }, 1000);
 
     return () => {
       if (intervalRef.current) {
@@ -385,14 +324,7 @@ export function useRunWorkout({
         intervalRef.current = null;
       }
     };
-  }, [
-    workout,
-    isPaused,
-    workoutState,
-    getCurrentExercise,
-    handlePhaseComplete,
-    currentExerciseIndex,
-  ]);
+  }, []);
 
   // Text-to-Speech: Name der nächsten Übung ansagen (einmal pro getReady-Phase)
   useEffect(() => {
@@ -428,26 +360,13 @@ export function useRunWorkout({
         if (timeRemainingRef.current <= 1) return; // kurz vor Phasenwechsel -> skip
 
         try {
-          const lang = detectExerciseTitleLanguageTag(exercise.name);
-          const rate = 1.12 + Math.random() * 0.05; // 1.12..1.17
+          const rate = 1.25 + Math.random() * 0.05;
+          const instructions = exercise.instructions ? ` ${exercise.instructions}` : '';
 
-          if (lang === 'en-US') {
-            // Nur der Name wird Englisch gesprochen, Rest Deutsch.
-            // Wir ketten die Ansagen, damit sie nicht überlappen.
-            Speech.speak('Nächste Übung:', {
-              language: 'de-DE',
-              rate,
-              onDone: () => {
-                try {
-                  Speech.speak(exercise.name, { language: 'en-US', rate });
-                } catch {
-                  // ignore
-                }
-              },
-            });
-          } else {
-            Speech.speak(`Nächste Übung: ${exercise.name}!`, { language: 'de-DE', rate });
-          }
+          Speech.speak(`Nächste Übung: ${exercise.name}.${instructions}`, {
+            language: 'de-DE',
+            rate,
+          });
         } catch {
           // ignore
         }

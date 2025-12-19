@@ -19,7 +19,7 @@ export default function ExerciseList() {
       <Text style={styles.exerciseListTitle}>Übungen:</Text>
       {allExercises.map((exercise, index) => (
         <View
-          key={exercise.name}
+          key={exercise.id ?? exercise.name}
           style={styles.exerciseItem}>
           <Text style={styles.exerciseNumber}>{index + 1}.</Text>
           <Text style={styles.exerciseName}>{exercise.name}</Text>

@@ -7,7 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { ReactNode } from 'react';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, StyleSheet, Text, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -68,6 +68,8 @@ export default function RunWorkoutScreen() {
     silentFinishSignalId,
     handleExerciseComplete,
     handleSkip,
+    isPaused,
+    setIsPaused,
   } = useRunWorkout({
     workoutId,
     onWorkoutNotFound: () => router.back(),
@@ -75,9 +77,13 @@ export default function RunWorkoutScreen() {
 
   const [flashVisible, setFlashVisible] = useState(false);
   const flashTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [completionMarked, setCompletionMarked] = useState(false);
 
   const isDark = useMemo(() => isDarkColor(backgroundColor), [backgroundColor]);
   const textColor = isDark ? '#ffffff' : '#111827';
+  const handlePauseToggle = useCallback(() => {
+    setIsPaused((prev) => !prev);
+  }, [setIsPaused]);
 
   useEffect(() => {
     if (!silentFinishSignalId) return;
@@ -151,6 +157,20 @@ export default function RunWorkoutScreen() {
     };
   }, [silentFinishSignalId]);
 
+  type CompletionTarget = '/(tabs)' | '/(tabs)/profile';
+  const handleCompletionNavigation = async (target: CompletionTarget) => {
+    if (!workout) return;
+    if (!completionMarked) {
+      try {
+        await markWorkoutCompletedToday(workout.id, sessionDurationMinutes ?? 0);
+      } catch {
+        // ignore
+      }
+      setCompletionMarked(true);
+    }
+    router.push(target);
+  };
+
   let content: ReactNode;
 
   if (!workout) {
@@ -163,19 +183,12 @@ export default function RunWorkoutScreen() {
       </SafeAreaView>
     );
   } else if (workoutState === 'completed') {
-    // Completion Screen
     content = (
       <RunCompletedView
         workout={workout}
         backgroundColor={backgroundColor}
-        onGoHome={async () => {
-          try {
-            await markWorkoutCompletedToday(workout.id, sessionDurationMinutes);
-          } catch {
-            // ignore
-          }
-          router.push('/');
-        }}
+        onContinueWorkout={() => handleCompletionNavigation('/(tabs)')}
+        onViewStats={() => handleCompletionNavigation('/(tabs)/profile')}
       />
     );
   } else if (!currentExercise) {
@@ -199,6 +212,8 @@ export default function RunWorkoutScreen() {
         backgroundColor={backgroundColor}
         onSkip={handleSkip}
         onCancel={() => router.back()}
+        onPause={handlePauseToggle}
+        isPaused={isPaused}
       />
     );
   } else {
@@ -215,6 +230,8 @@ export default function RunWorkoutScreen() {
         onExerciseTap={handleExerciseComplete}
         onSkip={handleSkip}
         onCancel={() => router.back()}
+        onPause={handlePauseToggle}
+        isPaused={isPaused}
       />
     );
   }
