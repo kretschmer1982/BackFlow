@@ -2,10 +2,12 @@ import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { useCallback, useEffect, useRef } from 'react';
 
 const BEEP_URL = 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg';
+const LONG_BEEP_URL = 'https://actions.google.com/sounds/v1/alarms/beep_long.ogg';
 const CHECK_URL = 'https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg';
 
 export function useBeepPlayer() {
   const player = useAudioPlayer(BEEP_URL);
+  const longPlayer = useAudioPlayer(LONG_BEEP_URL);
   const checkPlayer = useAudioPlayer(CHECK_URL);
   const lastBeepRef = useRef(0);
   const lastCheckRef = useRef(0);
@@ -34,12 +36,19 @@ export function useBeepPlayer() {
     }
   }, [player]);
 
-  const playDoubleBeep = useCallback(async () => {
-    // 2 kurze Beeps als Start-Signal
-    await playBeep();
-    await new Promise((r) => setTimeout(r, 180));
-    await playBeep();
-  }, [playBeep]);
+  const lastLongBeepRef = useRef(0);
+  const playLongSignal = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastLongBeepRef.current < 120) return;
+    lastLongBeepRef.current = now;
+
+    try {
+      longPlayer.seekTo(0);
+      longPlayer.play();
+    } catch {
+      // ignore
+    }
+  }, [longPlayer]);
 
   const playCheck = useCallback(async () => {
     // Anderer Ton als "Übung fertig"
@@ -55,5 +64,5 @@ export function useBeepPlayer() {
     }
   }, [checkPlayer]);
 
-  return { playBeep, playDoubleBeep, playCheck };
+  return { playBeep, playLongSignal, playCheck };
 }
