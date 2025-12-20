@@ -4,11 +4,13 @@ import { useCallback, useEffect, useRef } from 'react';
 const BEEP_URL = 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg';
 const LONG_BEEP_URL = 'https://actions.google.com/sounds/v1/alarms/beep_long.ogg';
 const CHECK_URL = 'https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg';
+const FANFARE_SOURCE = require('@/assets/audio/ping.mp3');
 
 export function useBeepPlayer() {
   const player = useAudioPlayer(BEEP_URL);
   const longPlayer = useAudioPlayer(LONG_BEEP_URL);
   const checkPlayer = useAudioPlayer(CHECK_URL);
+  const fanfarePlayer = useAudioPlayer(FANFARE_SOURCE);
   const lastBeepRef = useRef(0);
   const lastCheckRef = useRef(0);
 
@@ -64,5 +66,14 @@ export function useBeepPlayer() {
     }
   }, [checkPlayer]);
 
-  return { playBeep, playLongSignal, playCheck };
+  const playFanfare = useCallback(async () => {
+    try {
+      fanfarePlayer.seekTo(0);
+      fanfarePlayer.play();
+    } catch {
+      // ignore
+    }
+  }, [fanfarePlayer]);
+
+  return { playBeep, playLongSignal, playCheck, playFanfare };
 }

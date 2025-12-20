@@ -66,6 +66,7 @@ export default function RunWorkoutScreen() {
     elapsedTime,
     sessionDurationMinutes,
     silentFinishSignalId,
+    startSignalId,
     handleExerciseComplete,
     handleSkip,
     isPaused,
@@ -84,6 +85,36 @@ export default function RunWorkoutScreen() {
   const handlePauseToggle = useCallback(() => {
     setIsPaused((prev) => !prev);
   }, [setIsPaused]);
+
+  useEffect(() => {
+    if (!startSignalId) return;
+
+    // Vorherige Timer abbrechen
+    flashTimeoutsRef.current.forEach((t) => clearTimeout(t));
+    flashTimeoutsRef.current = [];
+
+    // 1x Vollbild weiß blinken
+    const ON_MS = 500;
+
+    setFlashVisible(true);
+    flashTimeoutsRef.current.push(setTimeout(() => setFlashVisible(false), ON_MS));
+
+    // Einmal vibrieren
+    if (Platform.OS === 'android') {
+      Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Long_Press).catch(() => {});
+      try {
+        Vibration.vibrate(ON_MS, false);
+      } catch {
+        // ignore
+      }
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
+    return () => {
+      flashTimeoutsRef.current.forEach((x) => clearTimeout(x));
+      flashTimeoutsRef.current = [];
+    };
+  }, [startSignalId]);
 
   useEffect(() => {
     if (!silentFinishSignalId) return;

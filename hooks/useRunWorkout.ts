@@ -23,6 +23,7 @@ interface UseRunWorkoutResult {
   elapsedTime: number;
   sessionDurationMinutes: number;
   silentFinishSignalId: number;
+  startSignalId: number;
   isPaused: boolean;
   setIsPaused: Dispatch<SetStateAction<boolean>>;
   handlePhaseComplete: () => Promise<void>;
@@ -78,6 +79,8 @@ export function useRunWorkout({
   const [enableBeep, setEnableBeep] = useState(true);
   const [exerciseTransitionSeconds, setExerciseTransitionSeconds] = useState<number>(GET_READY_DURATION);
   const [silentFinishSignalId, setSilentFinishSignalId] = useState(0);
+  const [startSignalId, setStartSignalId] = useState(0);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const isPausedRef = useRef<boolean>(false);
   const enableBeepRef = useRef<boolean>(true);
@@ -86,7 +89,7 @@ export function useRunWorkout({
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const TOTAL_ROUNDS = 1; // Eine Runde pro Workout
-  const { playLongSignal } = useBeepPlayer();
+  const { playLongSignal, playFanfare } = useBeepPlayer();
   const phaseCompleteInFlightRef = useRef(false);
   const currentSpeechCompletionRef = useRef<(() => void) | null>(null);
   const lastGetReadyAnnouncementKeyRef = useRef<string>('');
@@ -200,14 +203,18 @@ export function useRunWorkout({
       setExerciseTransitionSeconds(ts);
       // Wenn wir gerade in "getReady" sind und noch am Anfang stehen, passe den Countdown an.
       setTimeRemaining((prev) => (workoutStateRef.current === 'getReady' && prev === GET_READY_DURATION ? ts : prev));
+      setSettingsLoaded(true);
     };
     loadSettings();
   }, []);
 
   const safePlayStartSignal = useCallback(async () => {
-    if (!enableBeepRef.current) return;
-    await playLongSignal();
-  }, [playLongSignal]);
+    if (enableBeepRef.current) {
+      await playFanfare();
+    } else {
+      setStartSignalId(Date.now());
+    }
+  }, [playFanfare]);
 
   const safeSpeakPraise = useCallback(async () => {
     cancelSpeech();
@@ -387,6 +394,7 @@ export function useRunWorkout({
     if (!workout) return;
     if (isPaused) return;
     if (workoutState !== 'getReady') return;
+    if (!settingsLoaded) return;
 
     const exercise = getCurrentExercise();
     if (!exercise) return;
@@ -410,7 +418,7 @@ export function useRunWorkout({
     const message = messageParts.filter(Boolean).join('. ');
 
     void speakText(message);
-  }, [workout, isPaused, workoutState, getCurrentExercise, currentRound, currentExerciseIndex, speakText]);
+  }, [workout, isPaused, workoutState, getCurrentExercise, currentRound, currentExerciseIndex, speakText, settingsLoaded]);
 
   useEffect(() => {
     if (workoutState === 'getReady') return;
@@ -434,6 +442,7 @@ export function useRunWorkout({
     elapsedTime,
     sessionDurationMinutes: Math.max(1, Math.round((Date.now() - sessionStartRef.current) / 60000)),
     silentFinishSignalId,
+    startSignalId,
     isPaused,
     setIsPaused,
     handlePhaseComplete,
