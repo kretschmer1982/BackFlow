@@ -1,19 +1,20 @@
+import { APP_THEME_COLORS, isLightColor } from '@/constants/theme';
 import { Workout } from '@/types/interfaces';
 import {
-    ensureNotificationPermissions,
-    rescheduleTrainingReminders,
+  ensureNotificationPermissions,
+  rescheduleTrainingReminders,
 } from '@/utils/notifications';
 import {
-    PlannerSettings,
-    TrainingReminderTimeOfDay,
-    deletePlannedWorkout,
-    getPlannedWorkouts,
-    getPlannerSettings,
-    getSettings,
-    getWorkouts,
-    savePlannedWorkout,
-    updatePlannerSettings,
-    updateSettings,
+  PlannerSettings,
+  TrainingReminderTimeOfDay,
+  deletePlannedWorkout,
+  getPlannedWorkouts,
+  getPlannerSettings,
+  getSettings,
+  getWorkouts,
+  savePlannedWorkout,
+  updatePlannerSettings,
+  updateSettings,
 } from '@/utils/storage';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -76,6 +77,15 @@ export default function PlannerSettingsScreen() {
       load();
     }, [load])
   );
+
+  const isLightTheme = useMemo(() => isLightColor(backgroundColor), [backgroundColor]);
+  const theme = isLightTheme ? APP_THEME_COLORS.light : APP_THEME_COLORS.dark;
+  const textColor = theme.text;
+  const subtextColor = theme.subtext;
+  const cardBg = theme.cardBackground;
+  const borderColor = theme.borderColor;
+  const accentColor = theme.accent;
+  const overlayBg = isLightTheme ? 'rgba(0,0,0,0.48)' : 'rgba(0,0,0,0.72)';
 
   const clearConflictingOverridesForWeekday = useCallback(
     async (weekday: number) => {
@@ -271,18 +281,22 @@ export default function PlannerSettingsScreen() {
     if (selectingDay === null) return null;
     return (
       <Modal visible={true} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={() => setSelectingDay(null)}>
-          <View style={styles.pickerContainer}>
-            <Text style={styles.pickerTitle}>Workouts wählen (max. 3)</Text>
+        <Pressable style={[styles.overlay, { backgroundColor: overlayBg }]} onPress={() => setSelectingDay(null)}>
+          <View style={[styles.pickerContainer, { backgroundColor: cardBg, borderColor }]}>
+            <Text style={[styles.pickerTitle, { color: textColor }]}>Workouts wählen (max. 3)</Text>
             {workouts.length === 0 ? (
-              <Text style={styles.pickerEmpty}>Keine Workouts vorhanden.</Text>
+              <Text style={[styles.pickerEmpty, { color: subtextColor }]}>Keine Workouts vorhanden.</Text>
             ) : (
               <FlatList
                 data={workouts}
                 keyExtractor={(w) => w.id}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    style={styles.pickerItem}
+                    style={[
+                      styles.pickerItem,
+                      { borderBottomColor: borderColor },
+                      tempSelectedIds.includes(item.id) && { backgroundColor: accentColor + '20' },
+                    ]}
                     onPress={() => {
                       setTempSelectedIds((prev) => {
                         const has = prev.includes(item.id);
@@ -291,19 +305,32 @@ export default function PlannerSettingsScreen() {
                         return [...prev, item.id];
                       });
                     }}>
-                    <Text style={styles.pickerItemText}>
-                      {tempSelectedIds.includes(item.id) ? '✓ ' : ''}{item.name}
+                    <Text style={[styles.pickerItemText, { color: textColor }]}>
+                      {tempSelectedIds.includes(item.id) ? '✓ ' : ''}
+                      {item.name}
                     </Text>
                   </TouchableOpacity>
                 )}
               />
             )}
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
-              <TouchableOpacity style={[styles.cancelBtn, { flex: 1 }]} onPress={() => setSelectingDay(null)} activeOpacity={0.85}>
-                <Text style={styles.cancelBtnText}>Abbrechen</Text>
+              <TouchableOpacity
+                style={[
+                  styles.cancelBtn,
+                  { flex: 1, backgroundColor: cardBg, borderColor },
+                ]}
+                onPress={() => setSelectingDay(null)}
+                activeOpacity={0.85}>
+                <Text style={[styles.cancelBtnText, { color: textColor }]}>Abbrechen</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveBtn, { flex: 1 }]} onPress={applyMultiPicker} activeOpacity={0.85}>
-                <Text style={styles.saveBtnText}>Übernehmen</Text>
+              <TouchableOpacity
+                style={[
+                  styles.saveBtn,
+                  { flex: 1, backgroundColor: accentColor, borderColor: accentColor },
+                ]}
+                onPress={applyMultiPicker}
+                activeOpacity={0.85}>
+                <Text style={[styles.saveBtnText, { color: '#111827' }]}>Übernehmen</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -314,21 +341,24 @@ export default function PlannerSettingsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <StatusBar style="light" />
+      <StatusBar style={isLightTheme ? 'dark' : 'light'} />
 
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={handleSave} style={styles.saveHeaderButton} activeOpacity={0.85}>
-            <Text style={styles.saveHeaderButtonText}>Speichern</Text>
+          <TouchableOpacity
+            onPress={handleSave}
+            style={[styles.saveHeaderButton, { backgroundColor: cardBg, borderColor }]}
+            activeOpacity={0.85}>
+            <Text style={[styles.saveHeaderButtonText, { color: accentColor }]}>Speichern</Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.title}>Wochenplan</Text>
+        <Text style={[styles.title, { color: textColor }]}>Wochenplan</Text>
       </View>
 
       <View style={styles.content}>
         {/* Oben: Wochentage */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Wochentage</Text>
+        <View style={[styles.section, { backgroundColor: cardBg, borderColor }]}>
+          <Text style={[styles.sectionHeader, { color: textColor }]}>Wochentage</Text>
 
           {DISPLAY_ORDER.map((dayIndex) => {
             const ids = normalizedSchedule[dayIndex] || [];
@@ -338,20 +368,24 @@ export default function PlannerSettingsScreen() {
               .filter(Boolean) as string[];
 
             return (
-              <View key={dayIndex} style={styles.dayRow}>
-                <Text style={styles.dayLabel}>{DAYS[dayIndex]}</Text>
+            <View key={dayIndex} style={styles.dayRow}>
+                <Text style={[styles.dayLabel, { color: textColor }]}>{DAYS[dayIndex]}</Text>
                 <Switch
                   value={enabled}
                   onValueChange={(val) => void toggleDay(dayIndex, val)}
-                  trackColor={{ false: '#3a3a3a', true: '#4ade80' }}
+                  trackColor={{ false: borderColor, true: accentColor }}
                   thumbColor={'#ffffff'}
                 />
                 <TouchableOpacity
-                  style={[styles.workoutSelect, !enabled && styles.workoutSelectDisabled]}
+                  style={[
+                    styles.workoutSelect,
+                    { backgroundColor: cardBg, borderColor },
+                    !enabled && styles.workoutSelectDisabled,
+                  ]}
                   disabled={!enabled}
                   onPress={() => openMultiPicker(dayIndex)}
                   activeOpacity={0.85}>
-                  <Text style={styles.workoutSelectText} numberOfLines={1}>
+                  <Text style={[styles.workoutSelectText, { color: subtextColor }]} numberOfLines={1}>
                     {selectedNames.length > 0
                       ? selectedNames.join(', ')
                       : workouts.length > 0
@@ -365,19 +399,21 @@ export default function PlannerSettingsScreen() {
         </View>
 
         {/* Darunter: Erinnerungen */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Trainings-Erinnerungen</Text>
+        <View style={[styles.section, { backgroundColor: cardBg, borderColor }]}>
+          <Text style={[styles.sectionHeader, { color: textColor }]}>Trainings-Erinnerungen</Text>
           <View style={styles.reminderRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.reminderTitle}>Erinnerungen aktivieren</Text>
+              <Text style={[styles.reminderTitle, { color: textColor }]}>Erinnerungen aktivieren</Text>
               {reminderEnabled && (
-                <Text style={styles.sectionHint}>Zeit: {humanTimeLabel(reminderTime)}</Text>
+                <Text style={[styles.sectionHint, { color: subtextColor }]}>
+                  Zeit: {humanTimeLabel(reminderTime)}
+                </Text>
               )}
             </View>
             <Switch
               value={reminderEnabled}
               onValueChange={handleToggleReminder}
-              trackColor={{ false: '#3a3a3a', true: '#4ade80' }}
+              trackColor={{ false: borderColor, true: accentColor }}
               thumbColor={'#ffffff'}
             />
           </View>
@@ -388,10 +424,12 @@ export default function PlannerSettingsScreen() {
 
       {/* Reminder-Time Auswahl als Modal (nur wenn Toggle aktiviert wird) */}
       <Modal visible={reminderModalVisible} transparent animationType="fade">
-        <Pressable style={styles.overlay} onPress={closeReminderModal}>
-          <View style={styles.reminderModal}>
-            <Text style={styles.pickerTitle}>Erinnerung um…</Text>
-            <Text style={styles.pickerEmpty}>Wähle einen Zeitpunkt für Trainings-Erinnerungen.</Text>
+        <Pressable style={[styles.overlay, { backgroundColor: overlayBg }]} onPress={closeReminderModal}>
+          <View style={[styles.reminderModal, { backgroundColor: cardBg, borderColor }]}>
+            <Text style={[styles.pickerTitle, { color: textColor }]}>Erinnerung um…</Text>
+            <Text style={[styles.pickerEmpty, { color: subtextColor }]}>
+              Wähle einen Zeitpunkt für Trainings-Erinnerungen.
+            </Text>
 
             <View style={styles.timeRow}>
               {(['morning', 'noon', 'evening'] as TrainingReminderTimeOfDay[]).map((t) => {
@@ -399,9 +437,17 @@ export default function PlannerSettingsScreen() {
                 return (
                   <Pressable
                     key={t}
-                    style={[styles.timeChip, selected && styles.timeChipSelected]}
+                    style={[
+                      styles.timeChip,
+                      { borderColor },
+                      selected && { backgroundColor: accentColor, borderColor: accentColor },
+                    ]}
                     onPress={() => handleSelectReminderTime(t)}>
-                    <Text style={[styles.timeChipText, selected && styles.timeChipTextSelected]}>
+                    <Text
+                      style={[
+                        styles.timeChipText,
+                        { color: selected ? '#111827' : subtextColor },
+                      ]}>
                       {humanTimeLabel(t)}
                     </Text>
                   </Pressable>
@@ -410,14 +456,20 @@ export default function PlannerSettingsScreen() {
             </View>
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={closeReminderModal} activeOpacity={0.85}>
-                <Text style={styles.cancelBtnText}>Abbrechen</Text>
+              <TouchableOpacity
+                style={[styles.cancelBtn, { flex: 1, backgroundColor: cardBg, borderColor }]}
+                onPress={closeReminderModal}
+                activeOpacity={0.85}>
+                <Text style={[styles.cancelBtnText, { color: textColor }]}>Abbrechen</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.saveBtn}
+                style={[
+                  styles.saveBtn,
+                  { flex: 1, backgroundColor: accentColor, borderColor: accentColor },
+                ]}
                 onPress={() => handleSelectReminderTime(reminderTime)}
                 activeOpacity={0.85}>
-                <Text style={styles.saveBtnText}>Übernehmen</Text>
+                <Text style={[styles.saveBtnText, { color: '#111827' }]}>Übernehmen</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -435,42 +487,36 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 999,
-    backgroundColor: '#2a2a2a',
     borderWidth: 1,
-    borderColor: '#333333',
   },
-  saveHeaderButtonText: { color: '#4ade80', fontSize: 14, fontWeight: '800' },
-  title: { color: '#ffffff', fontSize: 20, fontWeight: '900', marginTop: 4 },
+  saveHeaderButtonText: { fontSize: 14, fontWeight: '800' },
+  title: { fontSize: 20, fontWeight: '900', marginTop: 4 },
 
   content: { flex: 1, paddingHorizontal: 12, paddingTop: 6, paddingBottom: 12, gap: 10 },
 
   section: {
     borderWidth: 1,
-    borderColor: '#333333',
     borderRadius: 14,
-    backgroundColor: '#151515',
     padding: 12,
   },
-  sectionHeader: { color: '#ffffff', fontSize: 15, fontWeight: '800' },
-  sectionHint: { color: '#aaaaaa', fontSize: 12, marginTop: 4 },
+  sectionHeader: { fontSize: 15, fontWeight: '800' },
+  sectionHint: { fontSize: 12, marginTop: 4 },
 
   dayRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, minHeight: 38 },
-  dayLabel: { width: 34, color: '#ffffff', fontSize: 16, fontWeight: '800' },
+  dayLabel: { width: 34, fontSize: 16, fontWeight: '800' },
   workoutSelect: {
     flex: 1,
     marginLeft: 10,
-    backgroundColor: '#2a2a2a',
     borderWidth: 1,
-    borderColor: '#333333',
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 10,
   },
   workoutSelectDisabled: { opacity: 0.45 },
-  workoutSelectText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
+  workoutSelectText: { fontSize: 14, fontWeight: '600' },
 
   reminderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  reminderTitle: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
+  reminderTitle: { fontSize: 14, fontWeight: '800' },
 
   timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   timeChip: {
@@ -478,44 +524,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#4b5563',
-    backgroundColor: 'transparent',
   },
-  timeChipSelected: { backgroundColor: '#4ade80', borderColor: '#22c55e' },
-  timeChipText: { fontSize: 12, color: '#e5e7eb', fontWeight: '700' },
-  timeChipTextSelected: { color: '#111827' },
+  timeChipSelected: {},
+  timeChipText: { fontSize: 12, fontWeight: '700' },
+  timeChipTextSelected: {},
 
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 30 },
-  pickerContainer: { backgroundColor: '#2a2a2a', borderRadius: 16, padding: 18, maxHeight: '70%' },
-  pickerTitle: { color: '#ffffff', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 12 },
-  pickerEmpty: { color: '#aaaaaa', textAlign: 'center', marginVertical: 12 },
-  pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#3a3a3a' },
-  pickerItemText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+  overlay: { flex: 1, justifyContent: 'center', padding: 30 },
+  pickerContainer: { borderRadius: 16, padding: 18, maxHeight: '70%', borderWidth: 1 },
+  pickerTitle: { fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 12 },
+  pickerEmpty: { textAlign: 'center', marginVertical: 12 },
+  pickerItem: { paddingVertical: 14, borderBottomWidth: 1 },
+  pickerItemText: { fontSize: 16, fontWeight: '600' },
 
   cancelBtn: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#1f2937',
     borderWidth: 1,
-    borderColor: '#334155',
     alignItems: 'center',
   },
-  cancelBtnText: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
+  cancelBtnText: { fontSize: 14, fontWeight: '800' },
 
   saveBtn: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#4ade80',
     borderWidth: 1,
-    borderColor: '#22c55e',
     alignItems: 'center',
   },
-  saveBtnText: { color: '#111827', fontSize: 14, fontWeight: '900' },
+  saveBtnText: { fontSize: 14, fontWeight: '900' },
 
-  reminderModal: { backgroundColor: '#2a2a2a', borderRadius: 16, padding: 18, maxHeight: '70%' },
+  reminderModal: { borderRadius: 16, padding: 18, maxHeight: '70%', borderWidth: 1 },
 });
+
 
 
 

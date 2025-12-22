@@ -1,13 +1,17 @@
 // @ts-nocheck
+import {
+  sharedRunLayoutStyles,
+  sharedRunTextStyles,
+} from '@/components/run/sharedRunStyles';
 import { getImageSource } from '@/constants/exercises';
 import { APP_THEME_COLORS, isLightColor } from '@/constants/theme';
 import { WorkoutExercise } from '@/types/interfaces';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   Image,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -53,7 +57,6 @@ export function RunExerciseView({
   const textColor = isDark ? APP_THEME_COLORS.dark.text : APP_THEME_COLORS.light.text;
   const subTextColor = isDark ? APP_THEME_COLORS.dark.subtext : APP_THEME_COLORS.light.subtext;
   const timerColor = isDark ? APP_THEME_COLORS.dark.text : APP_THEME_COLORS.light.text;
-  const accentColor = isDark ? APP_THEME_COLORS.dark.accent : APP_THEME_COLORS.light.accent;
   const cardBg = isDark ? APP_THEME_COLORS.dark.cardBackground : APP_THEME_COLORS.light.cardBackground;
   const deleteColor = isDark ? APP_THEME_COLORS.dark.delete : APP_THEME_COLORS.light.delete;
 
@@ -65,70 +68,80 @@ export function RunExerciseView({
       .padStart(2, '0')}`;
   };
 
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
   const handleCancelPress = () => {
-    Alert.alert(
-      'Training abbrechen',
-      'Möchtest du das Training wirklich abbrechen?',
-      [
-        {
-          text: 'Nein',
-          style: 'cancel',
-        },
-        {
-          text: 'Ja, abbrechen',
-          style: 'destructive',
-          onPress: onCancel,
-        },
-      ]
-    );
+    setShowCancelModal(true);
   };
+
+  const handleConfirmCancel = () => {
+    setShowCancelModal(false);
+    onCancel();
+  };
+
+  const handleDismissCancel = () => {
+    setShowCancelModal(false);
+  };
+
+  const durationInfo =
+    currentExercise.type === 'duration'
+      ? `${currentExercise.amount}s`
+      : `${currentExercise.amount} x`;
+  const exerciseHeading = `${currentExercise.name} • ${durationInfo}`;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={styles.workoutScreen}>
-        <TouchableOpacity
-          style={styles.touchableArea}
-          activeOpacity={1}
-          onPress={isRepsExercise ? onExerciseTap : undefined}
-          disabled={!isRepsExercise}>
-          <View style={styles.roundInfo}>
-            <Text style={[styles.roundText, { color: textColor }]}>
-              {workoutName} • Übung {currentExerciseIndex + 1} /{' '}
-              {totalExercises}
-            </Text>
-          </View>
+        <View style={styles.contentWrapper}>
+          <TouchableOpacity
+            style={[styles.touchableArea, styles.touchableExercise]}
+            activeOpacity={1}
+            onPress={isRepsExercise ? onExerciseTap : undefined}
+            disabled={!isRepsExercise}>
+            <View style={[sharedRunLayoutStyles.roundRow, styles.roundInfoRow]}>
+              <Text style={[sharedRunTextStyles.roundLine, { color: textColor }]}>
+                {workoutName} • Übung {currentExerciseIndex + 1} / {totalExercises}
+              </Text>
+              {isRepsExercise && (
+                <Text style={[sharedRunTextStyles.countdown, { color: textColor }]}>
+                  {formatTime(elapsedTime)}
+                </Text>
+              )}
+            </View>
 
-          <Image
-            source={getImageSource(currentExercise)}
-            style={[styles.exerciseImage, { width: imageSize, height: imageSize }]}
-            resizeMode="contain"
-          />
-          
-        <View style={styles.headerRow}>
-          <Text style={[styles.letsGoText, { color: textColor }]}>LET'S GO:</Text>
-          <Text style={[styles.timerText, { color: timerColor }]}>
-            {isRepsExercise ? `${currentExercise.amount} x` : `${timeRemaining}s`}
-          </Text>
-        </View>
-        {isRepsExercise && (
-          <Text style={[styles.stopwatchText, { color: textColor }]}>
-            {formatTime(elapsedTime)}
-          </Text>
-        )}
+            <View style={[sharedRunLayoutStyles.headerRow, styles.headerRow]}>
+              <Text style={[sharedRunTextStyles.headerLabel, { color: textColor }]}>
+                LET&apos;S GO:
+              </Text>
+              {!isRepsExercise && (
+                <Text style={[sharedRunTextStyles.timerText, { color: timerColor }]}>
+                  {`${timeRemaining}s`}
+                </Text>
+              )}
+            </View>
 
-          <View style={styles.exerciseDisplay}>
-            <Text style={[styles.currentExerciseText, { color: textColor }]}>
-              {currentExercise.name}
+            <Text style={[sharedRunTextStyles.exerciseTitle, { color: textColor }]}>
+              {exerciseHeading}
             </Text>
-          <Text style={[styles.instructionsText, { color: subTextColor }]}>
+
+            <Image
+              source={getImageSource(currentExercise)}
+              style={[styles.exerciseImage, { width: imageSize, height: imageSize }]}
+              resizeMode="contain"
+            />
+
+            <Text
+              style={[sharedRunTextStyles.instructions, { color: subTextColor }]}>
               {currentExercise.instructions}
             </Text>
-            {isRepsExercise && (
+          </TouchableOpacity>
+          {isRepsExercise && (
+            <View style={styles.tapHintWrapper}>
               <Text style={[styles.tapHint, { color: subTextColor }]}>Tippe zum Abschließen</Text>
-            )}
-          </View>
-        </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         <View style={styles.buttonContainer}>
           <Pressable
@@ -150,6 +163,32 @@ export function RunExerciseView({
           </Pressable>
         </View>
       </View>
+
+      <Modal
+        transparent
+        visible={showCancelModal}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={handleDismissCancel}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.cancelModal, { backgroundColor: cardBg }]}>
+            <Text style={[styles.modalTitle, { color: textColor }]}>Training abbrechen</Text>
+            <Text style={[styles.modalMessage, { color: subTextColor }]}>
+              Möchtest du das Training wirklich abbrechen?
+            </Text>
+            <View style={styles.modalButtonsRow}>
+              <Pressable style={styles.modalButton} onPress={handleDismissCancel}>
+                <Text style={[styles.modalButtonText, { color: textColor }]}>Nein</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalButton, { backgroundColor: deleteColor }]}
+                onPress={handleConfirmCancel}>
+                <Text style={[styles.modalButtonText, { color: '#ffffff' }]}>Ja, abbrechen</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -162,12 +201,22 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     paddingBottom: 20,
+    justifyContent: 'space-between',
   },
   touchableArea: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     width: '100%',
+  },
+  contentWrapper: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  touchableExercise: {
+    justifyContent: 'flex-start',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -177,63 +226,20 @@ const styles = StyleSheet.create({
     marginTop: 10,
     gap: 12,
   },
-  roundInfo: {
+  tapHintWrapper: {
+    width: '100%',
+    paddingVertical: 6,
+  },
+  roundInfoRow: {
     marginTop: 10,
     marginBottom: 10,
-  },
-  roundText: {
-    fontSize: 16,
-    fontWeight: '600',
-    opacity: 0.9,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
   },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginVertical: 20,
-  },
-  timerText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    letterSpacing: 4,
-  },
-  repsText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    letterSpacing: 4,
-  },
-  stopwatchText: {
-    fontSize: 32,
-    fontWeight: '600',
-    opacity: 0.7,
-    marginTop: 8,
-  },
-  exerciseDisplay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     width: '100%',
-  },
-  currentExerciseText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    letterSpacing: 1,
-    marginBottom: 16,
-  },
-  letsGoText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    letterSpacing: 2,
-  },
-  instructionsText: {
-    fontSize: 24,
-    textAlign: 'center',
-    opacity: 0.9,
-    paddingHorizontal: 20,
-    lineHeight: 26,
   },
   tapHint: {
     fontSize: 16,
@@ -241,6 +247,52 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     marginTop: 20,
     fontStyle: 'italic',
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  cancelModal: {
+    width: '100%',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   skipButton: {
     paddingVertical: 12,

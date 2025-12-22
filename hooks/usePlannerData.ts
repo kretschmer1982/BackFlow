@@ -20,8 +20,6 @@ export function usePlannerData() {
   const [plannedWorkouts, setPlannedWorkouts] = useState<PlannedWorkoutsMap>({});
   const [plannerSettings, setPlannerSettings] = useState<PlannerSettings>({ defaultSchedule: {} });
   const [backgroundColor, setBackgroundColor] = useState<string>('#000000');
-  const todayKey = toLocalDateKey(new Date());
-
   const loadData = useCallback(async () => {
     const settings = await getSettings();
     setBackgroundColor(settings.appBackgroundColor);
@@ -36,23 +34,40 @@ export function usePlannerData() {
     setPlannerSettings(pSettings);
   }, []);
 
+  const todayKey = toLocalDateKey(new Date());
+
   const getEntriesForDate = useCallback(
     (date: Date): PlannedWorkoutEntry[] => {
       const localKey = toLocalDateKey(date);
       const utcKey = toUtcDateKey(date);
       const manual = plannedWorkouts[localKey] ?? plannedWorkouts[utcKey];
 
+      const validWorkoutIds = new Set(workouts.map((w) => w.id));
+      const isPast = localKey < todayKey;
+
+      let entries: PlannedWorkoutEntry[] = [];
+
       if (manual !== undefined) {
-        return normalizePlannedValueToEntries(manual as PlannedWorkoutsStoredValue).slice(0, 3);
+        entries = normalizePlannedValueToEntries(manual as PlannedWorkoutsStoredValue);
+      } else {
+        const dow = date.getDay();
+        const defaultIds = Array.isArray(plannerSettings.defaultSchedule[dow])
+          ? plannerSettings.defaultSchedule[dow]
+          : [];
+        entries = defaultIds
+          .filter((id): id is string => typeof id === 'string' && id.trim() !== '')
+          .map((id) => ({ workoutId: id }));
       }
 
-      const dow = date.getDay();
-      const defaultIds = Array.isArray(plannerSettings.defaultSchedule[dow])
-        ? plannerSettings.defaultSchedule[dow]
-        : [];
-      return defaultIds.slice(0, 3).map((id) => ({ workoutId: id }));
+      const filtered = entries.filter(
+        (entry) =>
+          !!entry.workoutId &&
+          (isPast || validWorkoutIds.has(entry.workoutId))
+      );
+
+      return filtered.slice(0, 3);
     },
-    [plannedWorkouts, plannerSettings]
+    [plannedWorkouts, plannerSettings, todayKey, workouts]
   );
 
   const getWorkoutById = useCallback(

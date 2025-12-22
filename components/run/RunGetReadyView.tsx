@@ -1,12 +1,16 @@
+import {
+  sharedRunLayoutStyles,
+  sharedRunTextStyles,
+} from '@/components/run/sharedRunStyles';
 import { getImageSource } from '@/constants/exercises';
 import { APP_THEME_COLORS, isLightColor } from '@/constants/theme';
 import { WorkoutExercise } from '@/types/interfaces';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   Image,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -46,64 +50,59 @@ export function RunGetReadyView({
   const textColor = isDark ? APP_THEME_COLORS.dark.text : APP_THEME_COLORS.light.text;
   const subTextColor = isDark ? APP_THEME_COLORS.dark.subtext : APP_THEME_COLORS.light.subtext;
   const timerColor = isDark ? APP_THEME_COLORS.dark.text : APP_THEME_COLORS.light.text;
-  const accentColor = isDark ? APP_THEME_COLORS.dark.accent : APP_THEME_COLORS.light.accent;
   const cardBg = isDark ? APP_THEME_COLORS.dark.cardBackground : APP_THEME_COLORS.light.cardBackground;
   const deleteColor = isDark ? APP_THEME_COLORS.dark.delete : APP_THEME_COLORS.light.delete;
 
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
   const handleCancelPress = () => {
-    Alert.alert(
-      'Training abbrechen',
-      'Möchtest du das Training wirklich abbrechen?',
-      [
-        {
-          text: 'Nein',
-          style: 'cancel',
-        },
-        {
-          text: 'Ja, abbrechen',
-          style: 'destructive',
-          onPress: onCancel,
-        },
-      ]
-    );
+    setShowCancelModal(true);
   };
+
+  const handleConfirmCancel = () => {
+    setShowCancelModal(false);
+    onCancel();
+  };
+
+  const handleDismissCancel = () => {
+    setShowCancelModal(false);
+  };
+
+  const durationInfo =
+    currentExercise.type === 'duration'
+      ? `${currentExercise.amount}s`
+      : `${currentExercise.amount} x`;
+  const exerciseHeading = `${currentExercise.name} • ${durationInfo}`;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={styles.workoutScreen}>
-        <View style={styles.roundInfo}>
-          <Text style={[styles.roundText, { color: textColor }]}>
-            {workoutName} • Übung {currentExerciseIndex + 1} /{' '}
-            {totalExercises}
+        <View style={styles.contentWrapper}>
+          <View style={[sharedRunLayoutStyles.roundRow, styles.roundRowLeft]}>
+            <Text style={[sharedRunTextStyles.roundLine, { color: textColor }]}>
+              {workoutName} • Übung {currentExerciseIndex + 1} / {totalExercises}
+            </Text>
+          </View>
+
+          <View style={[sharedRunLayoutStyles.headerRow, styles.headerRow]}>
+            <Text style={[sharedRunTextStyles.headerLabel, { color: textColor }]}>GET READY:</Text>
+            <Text style={[sharedRunTextStyles.timerText, { color: timerColor }]}>{timeRemaining}</Text>
+          </View>
+
+          <Text
+            style={[sharedRunTextStyles.exerciseTitle, { color: textColor }]}
+            numberOfLines={1}>
+            {exerciseHeading}
           </Text>
-        </View>
 
-        <Image
-          source={getImageSource(currentExercise)}
-          style={[styles.exerciseImage, { width: imageSize, height: imageSize }]}
-          resizeMode="contain"
-        />
+          <Image
+            source={getImageSource(currentExercise)}
+            style={[styles.exerciseImage, { width: imageSize, height: imageSize }]}
+            resizeMode="contain"
+          />
 
-        <View style={styles.headerRow}>
-          <Text style={[styles.getReadyText, { color: textColor }]}>GET READY:</Text>
-          <Text style={[styles.timerText, { color: timerColor }]}>{timeRemaining}</Text>
-        </View>
-
-        <View style={styles.exerciseDisplay}>
-          <Text style={[styles.nextExerciseName, { color: textColor }]}>{currentExercise.name}</Text>
-
-          {currentExercise.type === 'duration' ? (
-            <Text style={[styles.nextExerciseInfo, { color: textColor }]}>
-              {currentExercise.amount}s
-            </Text>
-          ) : (
-            <Text style={[styles.nextExerciseInfo, { color: textColor }]}>
-              {currentExercise.amount} x
-            </Text>
-          )}
-
-          <Text style={[styles.instructionsText, { color: subTextColor }]}>
+          <Text style={[sharedRunTextStyles.instructions, { color: subTextColor }]}>
             {currentExercise.instructions}
           </Text>
         </View>
@@ -127,6 +126,31 @@ export function RunGetReadyView({
             <Text style={[styles.actionButtonText, { color: textColor }]}>Skip</Text>
           </Pressable>
         </View>
+        <Modal
+          transparent
+          visible={showCancelModal}
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={handleDismissCancel}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.cancelModal, { backgroundColor: cardBg }]}>
+              <Text style={[styles.modalTitle, { color: textColor }]}>Training abbrechen</Text>
+              <Text style={[styles.modalMessage, { color: subTextColor }]}>
+                Möchtest du das Training wirklich abbrechen?
+              </Text>
+              <View style={styles.modalButtonsRow}>
+                <Pressable style={styles.modalButton} onPress={handleDismissCancel}>
+                  <Text style={[styles.modalButtonText, { color: textColor }]}>Nein</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.modalButton, { backgroundColor: deleteColor }]}
+                  onPress={handleConfirmCancel}>
+                  <Text style={[styles.modalButtonText, { color: '#ffffff' }]}>Ja, abbrechen</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -140,59 +164,24 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     paddingBottom: 20,
+    justifyContent: 'space-between',
   },
-  roundInfo: {
+  contentWrapper: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  roundRowLeft: {
     marginTop: 10,
     marginBottom: 10,
-  },
-  roundText: {
-    fontSize: 16,
-    fontWeight: '600',
-    opacity: 0.9,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'flex-start',
   },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginVertical: 20,
-  },
-  timerText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    letterSpacing: 4,
-  },
-  exerciseDisplay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     width: '100%',
-  },
-  getReadyText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    letterSpacing: 2,
-  },
-  nextExerciseName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    letterSpacing: 1,
-    marginBottom: 16,
-  },
-  nextExerciseInfo: {
-    fontSize: 24,
-    opacity: 0.7,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  instructionsText: {
-    fontSize: 24,
-    textAlign: 'center',
-    opacity: 0.9,
-    paddingHorizontal: 20,
-    lineHeight: 26,
   },
   actionButton: {
     paddingVertical: 8,
@@ -248,5 +237,51 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 10,
     marginBottom: 10,
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  cancelModal: {
+    width: '100%',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

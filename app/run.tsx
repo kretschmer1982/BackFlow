@@ -4,6 +4,7 @@ import { RunGetReadyView } from '@/components/run/RunGetReadyView';
 import { useRunWorkout } from '@/hooks/useRunWorkout';
 import { PlannedWorkoutEntry, getPlannedWorkouts, normalizePlannedValueToEntries, savePlannedWorkout } from '@/utils/storage';
 import * as Haptics from 'expo-haptics';
+import { useKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { ReactNode } from 'react';
@@ -54,6 +55,7 @@ async function markWorkoutCompletedToday(workoutId: string, durationMinutes: num
 }
 
 export default function RunWorkoutScreen() {
+  useKeepAwake();
   const router = useRouter();
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>();
   const {

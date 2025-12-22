@@ -455,7 +455,7 @@ export default function CreateWorkoutScreen() {
               <Image
                 source={getImageSource(infoExercise!)}
                 style={styles.infoModalImage}
-                resizeMode="cover"
+                resizeMode="contain"
               />
               <Text style={[styles.infoModalMeta, { color: accentColor }]}>
                 {infoExercise!.type === 'duration'
@@ -903,7 +903,7 @@ const styles = StyleSheet.create({
   },
   infoModalImage: {
     width: '100%',
-    height: 160,
+    aspectRatio: 1,
     borderRadius: 12,
     marginBottom: 12,
     backgroundColor: '#1f2933',

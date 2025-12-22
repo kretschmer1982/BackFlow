@@ -38,3 +38,5 @@ const content = `// Diese Datei wird von scripts/generateExerciseImages.js erzeu
 fs.writeFileSync(outputFile, content, 'utf8');
 console.log(`✅ ${imageFiles.length} Einträge nach ${outputFile} geschrieben.`);
 
+
+

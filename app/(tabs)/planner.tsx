@@ -136,6 +136,11 @@ export default function PlannerScreen() {
 
   // Picker
   const handleDayPress = (date: Date) => {
+    const dateKey = toLocalDateKey(date);
+    if (dateKey < todayKey) {
+      Alert.alert('Vergangene Tage', 'Für vergangene Tage können keine Trainings geplant werden.');
+      return;
+    }
     const entries = getEntriesForDate(date);
     if (entries.length >= 3) return;
     setSelectedDateForPicker(date);
@@ -254,18 +259,22 @@ export default function PlannerScreen() {
 
   const renderCalendarRow = (date: Date) => {
     const entries = getEntriesForDate(date);
-    const isToday = toLocalDateKey(date) === todayKey;
+    const dateKey = toLocalDateKey(date);
+    const isPast = dateKey < todayKey;
+    const isToday = dateKey === todayKey;
 
     const rowContainerStyle = [
       styles.planRowContainer,
-      { backgroundColor: cardBg, borderColor: borderColor },
+      { backgroundColor: cardBg, borderColor },
       isToday && { borderColor: accentColor + '80' } // Nur Border färben, Background bleibt cardBg
     ];
 
     const chipStyle = [
       styles.trainingChip,
-      { backgroundColor: cardBg, borderColor: borderColor }
+      { backgroundColor: cardBg, borderColor }
     ];
+
+    const showAddButton = !isPast && entries.length === 0;
 
     return (
       <View style={[styles.dayItem, { height: rowLayout.rowH, marginBottom: rowLayout.gap }]}>
@@ -285,10 +294,14 @@ export default function PlannerScreen() {
         </View>
 
         <View style={rowContainerStyle}>
-          {entries.length === 0 ? (
+          {showAddButton ? (
             <TouchableOpacity style={styles.singleAdd} onPress={() => handleDayPress(date)} activeOpacity={0.85}>
               <Text style={[styles.emptyPlanText, { color: subtextColor }]}>+ Training planen</Text>
             </TouchableOpacity>
+          ) : entries.length === 0 ? (
+            <View style={styles.singleAdd}>
+              <Text style={[styles.emptyPlanText, { color: subtextColor }]}>Vergangener Tag</Text>
+            </View>
           ) : entries.length === 1 ? (
             <View style={styles.multiContainer}>
               {(() => {
@@ -446,6 +459,7 @@ export default function PlannerScreen() {
         onClose={() => setWorkoutPickerVisible(false)}
         workouts={workouts}
         onSelect={onWorkoutSelected}
+        backgroundColor={backgroundColor}
       />
 
       <DayPickerModal
