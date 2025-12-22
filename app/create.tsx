@@ -50,7 +50,6 @@ export default function CreateWorkoutScreen() {
   const { workoutId } = useLocalSearchParams<{ workoutId?: string }>();
   const titleInputRef = useRef<TextInput | null>(null);
   const [workoutName, setWorkoutName] = useState('');
-  const [workoutTotalMinutes, setWorkoutTotalMinutes] = useState('');
   const [isTitleEditable, setIsTitleEditable] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string>(APP_THEME_COLORS.dark.background);
   const [selectedExercises, setSelectedExercises] =
@@ -91,11 +90,6 @@ export default function CreateWorkoutScreen() {
         const workout = await getWorkoutById(workoutId);
         if (workout) {
           setWorkoutName(workout.name);
-          setWorkoutTotalMinutes(
-            typeof (workout as any).totalMinutes === 'number' && (workout as any).totalMinutes > 0
-              ? String((workout as any).totalMinutes)
-              : ''
-          );
           const exercisesWithIds = workout.exercises.map((ex, index) => ({
             ...ex,
             instanceId:
@@ -215,10 +209,6 @@ export default function CreateWorkoutScreen() {
       id: workoutId || Date.now().toString(),
       name: workoutName.trim(),
       exercises,
-      totalMinutes: (() => {
-        const m = parseInt(workoutTotalMinutes || '0', 10);
-        return Number.isFinite(m) && m > 0 ? m : undefined;
-      })(),
       createdAt: workoutId ? undefined : Date.now(),
     };
 
@@ -247,9 +237,9 @@ export default function CreateWorkoutScreen() {
             ]}
             value={workoutName}
             onChangeText={setWorkoutName}
-            editable={isTitleEditable}
+            onFocus={() => setIsTitleEditable(true)}
             onBlur={() => setIsTitleEditable(false)}
-            placeholder={workoutId ? 'Workoutname' : 'Neues Workout'}
+            placeholder={workoutId ? 'Workoutname' : 'Workout-Name...'}
             placeholderTextColor={placeholderColor}
             testID="create-workout-title-input"
           />
@@ -257,15 +247,8 @@ export default function CreateWorkoutScreen() {
             style={styles.titleEditButton}
             onPress={() => {
               if (!isTitleEditable) {
-                setIsTitleEditable(true);
-                // Kurzen Delay, damit editable-State sicher aktiv ist,
-                // bevor der Fokus gesetzt wird (sorgt auch fürs Tastatur-Öffnen).
-                setTimeout(() => {
-                  titleInputRef.current?.focus();
-                }, 0);
+                titleInputRef.current?.focus();
               } else {
-                // Bearbeitung bestätigen
-                setIsTitleEditable(false);
                 titleInputRef.current?.blur();
               }
             }}>
@@ -281,17 +264,6 @@ export default function CreateWorkoutScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.totalMinutesRow}>
-          <Text style={[styles.totalMinutesLabel, { color: subTextColor }]}>Gesamtzeit (Min.)</Text>
-          <TextInput
-            value={workoutTotalMinutes}
-            onChangeText={(t) => setWorkoutTotalMinutes(t.replace(/[^0-9]/g, ''))}
-            keyboardType="numeric"
-            placeholder="z.B. 25"
-            placeholderTextColor={placeholderColor}
-            style={[styles.totalMinutesInput, { backgroundColor: inputBg, borderColor: inputBorder, color: textColor }]}
-          />
-        </View>
       </View>
 
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
@@ -449,32 +421,41 @@ export default function CreateWorkoutScreen() {
           animationType="fade"
           visible={!!infoExercise}
           onRequestClose={() => setInfoExercise(null)}>
-          <View style={styles.infoModalOverlay}>
-            <View style={[styles.infoModalCard, { backgroundColor: isDarkBackground ? '#111827' : '#ffffff', borderColor: accentColor }]}>
-              <Text style={[styles.infoModalTitle, { color: isDarkBackground ? '#ffffff' : '#111827' }]}>{infoExercise!.name}</Text>
-              <Image
-                source={getImageSource(infoExercise!)}
-                style={styles.infoModalImage}
-                resizeMode="contain"
-              />
-              <Text style={[styles.infoModalMeta, { color: accentColor }]}>
-                {infoExercise!.type === 'duration'
-                  ? `${infoExercise!.amount ?? 0} Sekunden`
-                  : `${infoExercise!.amount ?? 0} Wiederholungen`}
-              </Text>
-              {infoExercise!.instructions ? (
-                <Text style={[styles.infoModalText, { color: isDarkBackground ? '#e5e7eb' : '#374151' }]}>
-                  {infoExercise!.instructions}
-                </Text>
-              ) : null}
-
-              <Pressable
-                style={[styles.infoModalCloseButton, { backgroundColor: accentColor }]}
-                onPress={() => setInfoExercise(null)}>
-                <Text style={styles.infoModalCloseText}>Schließen</Text>
-              </Pressable>
-            </View>
+      <View style={styles.infoModalOverlay}>
+        <View
+          style={[
+            styles.infoModalCard,
+            { backgroundColor: isDarkBackground ? '#111827' : '#ffffff', borderColor: accentColor },
+          ]}>
+          <View style={styles.infoModalImageWrapper}>
+            <Image
+              source={getImageSource(infoExercise!)}
+              style={styles.infoModalImage}
+              resizeMode="contain"
+            />
           </View>
+          <View style={styles.infoModalBody}>
+            <Text style={[styles.infoModalTitle, { color: isDarkBackground ? '#ffffff' : '#111827' }]}>
+              {infoExercise!.name}
+            </Text>
+            <Text style={[styles.infoModalMeta, { color: accentColor }]}>
+              {infoExercise!.type === 'duration'
+                ? `${infoExercise!.amount ?? 0} Sekunden`
+                : `${infoExercise!.amount ?? 0} Wiederholungen`}
+            </Text>
+            {infoExercise!.instructions ? (
+              <Text style={[styles.infoModalText, { color: isDarkBackground ? '#e5e7eb' : '#374151' }]}>
+                {infoExercise!.instructions}
+              </Text>
+            ) : null}
+            <Pressable
+              style={[styles.infoModalCloseButton, { backgroundColor: accentColor }]}
+              onPress={() => setInfoExercise(null)}>
+              <Text style={styles.infoModalCloseText}>Schließen</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
         </Modal>
       )}
     </SafeAreaView>
@@ -496,26 +477,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-  },
-  totalMinutesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 10,
-  },
-  totalMinutesLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  totalMinutesInput: {
-    width: 90,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    fontSize: 14,
-    fontWeight: '800',
-    textAlign: 'center',
   },
   titleInput: {
     flex: 1,
@@ -901,17 +862,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 12,
   },
-  infoModalImage: {
+  infoModalImageWrapper: {
     width: '100%',
     aspectRatio: 1,
     borderRadius: 12,
     marginBottom: 12,
+    overflow: 'hidden',
     backgroundColor: '#1f2933',
+  },
+  infoModalImage: {
+    width: '100%',
+    height: '100%',
   },
   infoModalMeta: {
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
+  },
+  infoModalBody: {
+    width: '100%',
   },
   infoModalText: {
     fontSize: 14,
