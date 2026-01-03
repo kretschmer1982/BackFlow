@@ -15,6 +15,14 @@ export interface Exercise {
   image?: string | number; // optional, hängt vor allem von benutzerdefinierten Übungen ab
   equipment?: ExerciseEquipment;
   source?: ExerciseSource;
+  summary?: string;
+}
+
+export interface Warmup {
+  id: string;
+  name: string;
+  segments: Exercise[];
+  summary?: string;
 }
 
 const DEFAULT_AVATAR_IMAGE: number = require('../assets/images/avatar_default.png');
@@ -224,7 +232,79 @@ const STANDARD_EXERCISES: Exercise[] = [
   },
 ];
 
+export const WARM_UP_SEGMENTS: Exercise[] = [
+  {
+    id: 'warmup-1',
+    name: 'Warm-up: Ankommen & Schultern',
+    type: 'duration',
+    amount: 60,
+    instructions:
+      'Hey, schön dass du da bist! Komm auf deine Matte, stell dich hüftbreit und locker hin. Die Knie sind leicht gebeugt. Wir schalten den Alltag aus und den Körper an. Atme tief durch die Nase ein, nimm die Arme über die Seite hoch, mach dich riesengroß und durch den Mund ausatmen, Arme fallen lassen. Noch zweimal: Einatmen, Länge suchen, Ausatmen, loslassen.',
+    source: 'standard',
+    summary: 'Ankommen, Atmen & Schultern lockern mit langsamen Kreisen.',
+  },
+  {
+    id: 'warmup-2',
+    name: 'Warm-up: Flanken öffnen',
+    type: 'duration',
+    amount: 60,
+    instructions:
+      'Bleib stabil stehen, bau Spannung im Bauch auf, zieh den Bauchnabel leicht nach innen. Nimm die Arme hoch, greif abwechselnd mit rechts und links zur Decke, stell dir vor, du willst oben einen Apfel pflücken. Zieh dich aus der Taille raus, mach dich lang, die Füße bleiben am Boden kleben. Rechts, links, rechts, links.',
+    source: 'standard',
+    summary: 'Seitliche Dehnung, Flanken öffnen und Spannung nach oben ziehen.',
+  },
+  {
+    id: 'warmup-3',
+    name: 'Warm-up: Rotation & Pendel',
+    type: 'duration',
+    amount: 60,
+    instructions:
+      'Komm zurück zur Mitte, lockere kurz die Beine. Lass die Arme locker hängen, beginne den Oberkörper locker von rechts nach links zu drehen, die Arme fliegen mit wie bei einer pendelnden Trommel. Der Blick geht mit über die Schulter nach hinten. Halte das Becken stabil, die Drehung kommt aus der Brustwirbelsäule. Atme fließend weiter, klopf dir mit den Händen leicht auf den unteren Rücken und die Nieren.',
+    source: 'standard',
+    summary: 'Locker pendelnde Rotation aus der Brustwirbelsäule.',
+  },
+  {
+    id: 'warmup-4',
+    name: 'Warm-up: Katze & Kuh im Stand',
+    type: 'duration',
+    amount: 60,
+    instructions:
+      'Pendel dich langsam in der Mitte aus. Stütz deine Hände auf die Oberschenkel, knapp oberhalb der Knie, Rücken gerade, Po etwas nach hinten. Atme aus, zieh das Kinn zur Brust, mach den Rücken rund und schieb die Wirbelsäule zur Decke. Atme ein, heb den Brustkorb, geh in ein leichtes Hohlkreuz, Blick hebt sich. Wieder rund, jeden Wirbel einzeln durchbewegen, mach das noch dreimal in deinem Atemrhythmus.',
+    source: 'standard',
+    summary: 'Stehende Katze-Kuh: Wirbelsäule rund und gestreckt durchatmen.',
+  },
+  {
+    id: 'warmup-5',
+    name: 'Warm-up: Beine & Rücken aktivieren',
+    type: 'duration',
+    amount: 60,
+    instructions:
+      'Richte dich langsam auf. Stell dich etwas breiter als hüftbreit, geh tief in die Kniebeuge und nimm die Arme nach vorne. Beim Hochkommen zieh die Ellbogen kraftvoll nach hinten, als würdest du rudern, und kneif die Schulterblätter zusammen. Tief – hoch. Halte die Knie außen, spann den Po an.',
+    source: 'standard',
+    summary: 'Squat & Row: Beine tief, Schultern aktiv und warm.',
+  },
+  {
+    id: 'warmup-6',
+    name: 'Warm-up: Lockeres Abklopfen',
+    type: 'duration',
+    amount: 60,
+    instructions:
+      'Schüttle die Arme locker aus, lass sie vibrieren. Klopfe mit den Handflächen an die Oberschenkel, dann an die Schultern, spüre wie Wärme kommt. Atme ruhig weiter und nimm den ersten Herzschlag wahr.',
+    source: 'standard',
+    summary: 'Locker ausklingen lassen mit Vibration und Atem.',
+  },
+];
+
 export const EXERCISES: Exercise[] = [...STANDARD_EXERCISES];
+
+export const WARM_UP_LIBRARY: Warmup[] = [
+  {
+    id: 'default',
+    name: 'Warm-up: Ankommen & Schultern',
+    segments: WARM_UP_SEGMENTS,
+    summary: 'Sanftes Ankommen, Atmung und Mobilisierung der Schultern.',
+  },
+];
 
 function normalizeImageValue(value?: string | number): string | number | undefined {
   if (typeof value === 'number') {

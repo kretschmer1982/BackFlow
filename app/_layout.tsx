@@ -1,9 +1,9 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
-import { useEffect } from 'react';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { rescheduleTrainingReminders, useNotificationObserver } from '@/utils/notifications';
@@ -25,6 +25,7 @@ export default function RootLayout() {
           <Stack.Screen name="create" options={{ headerShown: false }} />
           <Stack.Screen name="create-exercise" options={{ headerShown: false }} />
           <Stack.Screen name="run" options={{ headerShown: false }} />
+          <Stack.Screen name="warmup" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
           <Stack.Screen name="settings/background" options={{ headerShown: false }} />

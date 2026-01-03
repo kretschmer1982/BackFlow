@@ -175,8 +175,9 @@ export default function WorkoutScreen() {
   }, [todayPlanned]);
 
   const handleWorkoutPress = (workout: Workout) => {
+    const target = workout.warmupId || workout.includeWarmup ? '/warmup' : '/run';
     router.push({
-      pathname: '/run',
+      pathname: target,
       params: { workoutId: workout.id },
     });
   };

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Exercise, EXERCISES, getImageSource } from '@/constants/exercises';
+import { Exercise, EXERCISES, getImageSource, WARM_UP_LIBRARY, Warmup } from '@/constants/exercises';
 import { APP_THEME_COLORS } from '@/constants/theme';
 import { Workout, WorkoutExercise } from '@/types/interfaces';
 import {
@@ -55,6 +55,36 @@ export default function CreateWorkoutScreen() {
   const [selectedExercises, setSelectedExercises] =
     useState<WorkoutExercise[]>([]);
   const [allExercises, setAllExercises] = useState<Exercise[]>(EXERCISES);
+  const [selectedWarmupId, setSelectedWarmupId] = useState<string | null>(null);
+  const warmupOptions = WARM_UP_LIBRARY;
+  const warmupOption = warmupOptions[0] ?? null;
+  const toggleWarmupSelection = (warmupId: string) => {
+    setSelectedWarmupId((prev) => (prev === warmupId ? null : warmupId));
+  };
+
+  type WorkoutEntry = WorkoutExercise & {
+    isWarmupEntry?: boolean;
+    warmupName?: string;
+  };
+
+  const buildWarmupEntry = (warmup: Warmup): WorkoutEntry => ({
+    id: warmup.id,
+    name: warmup.name,
+    type: 'duration',
+    amount: warmup.segments?.[0]?.amount ?? 0,
+    instructions: warmup.summary ?? '',
+    instanceId: `warmup-${warmup.id}`,
+    source: 'custom',
+    isWarmupEntry: true,
+    warmupName: 'Warm up 1',
+  });
+
+  const selectedWarmup = selectedWarmupId
+    ? warmupOptions.find((warmup) => warmup.id === selectedWarmupId) ?? null
+    : null;
+  const warmupEntry = selectedWarmup ? buildWarmupEntry(selectedWarmup) : null;
+  const workoutListData = warmupEntry ? [warmupEntry, ...selectedExercises] : selectedExercises;
+
   // State für Eingabewerte der Übungsmengen (erlaubt leere Strings)
   const [exerciseAmountInputs, setExerciseAmountInputs] =
     useState<Map<string, string>>(new Map());
@@ -90,6 +120,10 @@ export default function CreateWorkoutScreen() {
         const workout = await getWorkoutById(workoutId);
         if (workout) {
           setWorkoutName(workout.name);
+          const warmupId =
+            workout.warmupId ??
+            (workout.includeWarmup ? warmupOption?.id : null);
+          setSelectedWarmupId(warmupId ?? null);
           const exercisesWithIds = workout.exercises.map((ex, index) => ({
             ...ex,
             instanceId:
@@ -210,6 +244,8 @@ export default function CreateWorkoutScreen() {
       name: workoutName.trim(),
       exercises,
       createdAt: workoutId ? undefined : Date.now(),
+      includeWarmup: !!selectedWarmupId,
+      warmupId: selectedWarmupId ?? undefined,
     };
 
     const success = await saveWorkout(workout);
@@ -281,6 +317,39 @@ export default function CreateWorkoutScreen() {
                   das Info-Symbol siehst du Details und Bild.
                 </Text>
 
+                {warmupOption && (
+                  <View style={[
+                    styles.warmupCard,
+                    { backgroundColor: cardBg, borderColor: selectedWarmupId ? accentColor : cardBorder },
+                  ]}>
+                    <View style={styles.warmupCardHeader}>
+                      <Pressable
+                        onPress={() => warmupOption && toggleWarmupSelection(warmupOption.id)}
+                        style={{ flex: 1 }}>
+                      <Text
+                        style={[styles.warmupCardTitle, { color: textColor }]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail">
+                        Warm up 1
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.infoButton}
+                      onPress={() =>
+                      warmupOption &&
+                        setInfoExercise({
+                          id: warmupOption.id,
+                          name: warmupOption.name,
+                          type: 'duration',
+                          amount: warmupOption.segments?.[0]?.amount ?? 0,
+                          instructions: warmupOption.summary ?? '',
+                        })
+                      }>
+                      <Text style={[styles.infoIcon, { borderColor: textColor, color: textColor }]}>i</Text>
+                    </Pressable>
+                  </View>
+                </View>
+                )}
                 {allExercises.map((exercise) => (
                   <View key={exercise.name} style={[styles.exerciseCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
                     <View style={styles.exerciseHeader}>
@@ -319,23 +388,29 @@ export default function CreateWorkoutScreen() {
           <View style={styles.rightColumn}>
             <Text style={[styles.rightColumnTitle, { color: textColor }]}>Dein Workout</Text>
             <DraggableFlatList
-              data={selectedExercises}
+              data={workoutListData}
               keyExtractor={(item) =>
-                item.instanceId ? item.instanceId : item.name
+                item.isWarmupEntry
+                  ? item.instanceId ?? `warmup-${item.id}`
+                  : item.instanceId
+                    ? item.instanceId
+                    : item.name
               }
               onDragEnd={({ data }) => {
-                setSelectedExercises(data);
+                const withoutWarmup = data.filter((entry) => !entry.isWarmupEntry);
+                setSelectedExercises(withoutWarmup);
               }}
               renderItem={({
                 item,
                 drag,
                 isActive,
-              }: RenderItemParams<WorkoutExercise>) => {
+              }: RenderItemParams<WorkoutEntry>) => {
                 const key = item.instanceId ?? item.name;
                 const amountValue = exerciseAmountInputs.has(key)
                   ? exerciseAmountInputs.get(key) ?? ''
                   : item.amount?.toString() || '';
 
+                const isWarmupEntry = item.isWarmupEntry;
                 let longPressTimeout: ReturnType<typeof setTimeout> | null =
                   null;
 
@@ -349,7 +424,9 @@ export default function CreateWorkoutScreen() {
                     <TouchableOpacity
                       style={styles.selectedExerciseHeader}
                       onPressIn={() => {
-                        longPressTimeout = setTimeout(drag, 200);
+                        if (!isWarmupEntry) {
+                          longPressTimeout = setTimeout(drag, 200);
+                        }
                       }}
                       onPressOut={() => {
                         if (longPressTimeout) {
@@ -362,30 +439,38 @@ export default function CreateWorkoutScreen() {
                       <View style={styles.selectedContentRow}>
                         <View style={styles.selectedTextColumn}>
                           <Text style={[styles.selectedExerciseName, { color: textColor }]}>
-                            {item.name}
+                            {item.warmupName ?? item.name}
                           </Text>
-                          <View style={styles.amountRow}>
-                            <Text style={[styles.amountUnitText, { color: textColor }]}>
-                              {item.type === 'duration' ? 'Sek' : 'Anz.'}
-                            </Text>
-                            <TextInput
-                              style={[styles.amountInlineInput, { backgroundColor: inputBg, borderColor: inputBorder, color: textColor }]}
-                              value={amountValue}
-                              onChangeText={(text) =>
-                                updateExerciseAmountInput(key, text)
-                              }
-                              keyboardType="numeric"
-                              placeholder={
-                                item.amount ? item.amount.toString() : undefined
-                              }
-                              placeholderTextColor={placeholderColor}
-                              testID={`create-exercise-amount-input-${key}`}
-                            />
-                          </View>
+                          {!isWarmupEntry && (
+                            <View style={styles.amountRow}>
+                              <Text style={[styles.amountUnitText, { color: textColor }]}>
+                                {item.type === 'duration' ? 'Sek' : 'Anz.'}
+                              </Text>
+                              <TextInput
+                                style={[styles.amountInlineInput, { backgroundColor: inputBg, borderColor: inputBorder, color: textColor }]}
+                                value={amountValue}
+                                onChangeText={(text) =>
+                                  updateExerciseAmountInput(key, text)
+                                }
+                                keyboardType="numeric"
+                                placeholder={
+                                  item.amount ? item.amount.toString() : undefined
+                                }
+                                placeholderTextColor={placeholderColor}
+                                testID={`create-exercise-amount-input-${key}`}
+                              />
+                            </View>
+                          )}
                         </View>
                         <Pressable
                           style={styles.removeExerciseButton}
-                          onPress={() => key && removeExerciseInstance(key)}>
+                          onPress={() => {
+                            if (isWarmupEntry) {
+                              setSelectedWarmupId(null);
+                              return;
+                            }
+                            key && removeExerciseInstance(key);
+                          }}>
                           <Text style={styles.removeExerciseButtonText}>
                             ×
                           </Text>
@@ -561,6 +646,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     minHeight: 56,
+  },
+  warmupCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+    padding: 12,
+  },
+  warmupCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  warmupCardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
   },
   exerciseHeader: {
     flexDirection: 'row',

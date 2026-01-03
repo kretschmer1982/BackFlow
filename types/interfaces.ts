@@ -16,5 +16,7 @@ export interface Workout {
   // Optional: manuell erfasste Gesamtzeit (Minuten) – für Statistik/Planung
   totalMinutes?: number;
   createdAt?: number; // Timestamp für Sortierung
+  includeWarmup?: boolean;
+  warmupId?: string;
 }
 
