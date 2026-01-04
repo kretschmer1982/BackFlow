@@ -1,26 +1,26 @@
 import { APP_THEME_COLORS, isLightColor } from '@/constants/theme';
 import { Workout } from '@/types/interfaces';
 import {
-  ensureNotificationPermissions,
-  rescheduleTrainingReminders,
+    ensureNotificationPermissions,
+    rescheduleTrainingReminders,
 } from '@/utils/notifications';
 import {
-  PlannerSettings,
-  TrainingReminderTimeOfDay,
-  deletePlannedWorkout,
-  getPlannedWorkouts,
-  getPlannerSettings,
-  getSettings,
-  getWorkouts,
-  savePlannedWorkout,
-  updatePlannerSettings,
-  updateSettings,
+    PlannerSettings,
+    TrainingReminderTimeOfDay,
+    deletePlannedWorkout,
+    getPlannedWorkouts,
+    getPlannerSettings,
+    getSettings,
+    getWorkouts,
+    savePlannedWorkout,
+    updatePlannerSettings,
+    updateSettings,
 } from '@/utils/storage';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Modal, Platform, Pressable, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
@@ -163,7 +163,7 @@ export default function PlannerSettingsScreen() {
       await clearConflictingOverridesForWeekday(dayIndex);
     }
     try {
-      if (reminderEnabled) {
+      if (reminderEnabled && Platform.OS !== 'web') {
         await rescheduleTrainingReminders();
       }
     } catch {
@@ -189,7 +189,7 @@ export default function PlannerSettingsScreen() {
       await clearConflictingOverridesForWeekday(dayIndex);
     }
     try {
-      if (reminderEnabled) {
+      if (reminderEnabled && Platform.OS !== 'web') {
         await rescheduleTrainingReminders();
       }
     } catch {
@@ -224,7 +224,9 @@ export default function PlannerSettingsScreen() {
     setReminderEnablePending(false);
     setReminderModalVisible(false);
     try {
-      await rescheduleTrainingReminders();
+      if (Platform.OS !== 'web') {
+        await rescheduleTrainingReminders();
+      }
     } catch {
       // ignore
     }
@@ -237,7 +239,9 @@ export default function PlannerSettingsScreen() {
     setReminderEnablePending(false);
     setReminderModalVisible(false);
     try {
-      await rescheduleTrainingReminders();
+      if (Platform.OS !== 'web') {
+        await rescheduleTrainingReminders();
+      }
     } catch {
       Alert.alert(
         'Hinweis',
@@ -270,7 +274,9 @@ export default function PlannerSettingsScreen() {
   const handleSave = async () => {
     await updatePlannerSettings({ defaultSchedule: normalizedSchedule });
     try {
-      await rescheduleTrainingReminders();
+      if (Platform.OS !== 'web') {
+        await rescheduleTrainingReminders();
+      }
     } catch {
       // ignore
     }

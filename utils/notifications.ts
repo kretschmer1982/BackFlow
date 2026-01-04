@@ -1,12 +1,16 @@
+'use client';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { getPlannerSettings, getSettings, getWorkouts, TrainingReminderTimeOfDay } from './storage';
 
 // Konfiguration des Verhaltens bei Empfang im Vordergrund
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
@@ -47,6 +51,7 @@ function getTimeForTimeOfDay(tod: TrainingReminderTimeOfDay): { hour: number; mi
 }
 
 export async function rescheduleTrainingReminders() {
+  if (Platform.OS === 'web') return;
   // Zuerst alles löschen
   await Notifications.cancelAllScheduledNotificationsAsync();
 
@@ -79,17 +84,20 @@ export async function rescheduleTrainingReminders() {
       const dayWorkouts = scheduledWorkoutIds.map(id => workouts.find(w => w.id === id)).filter(Boolean);
       
       if (dayWorkouts.length > 0) {
-          const workoutNames = dayWorkouts.map(w => w?.name).join(', ');
-          
-          await Notifications.scheduleNotificationAsync({
-             content: {
-                 title: 'Training Zeit!',
-                 body: `Heute steht an: ${workoutNames}. Tippe hier zum Starten!`,
-                 data: { screen: '(tabs)' },
-                 sound: true,
-             },
-             trigger: date, // Date object = Timestamp trigger
-         });
+        const workoutNames = dayWorkouts.map(w => w?.name).join(', ');
+
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: 'Training Zeit!',
+            body: `Heute steht an: ${workoutNames}. Tippe hier zum Starten!`,
+            data: { screen: '(tabs)' },
+            sound: true,
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date,
+          },
+        });
       }
     }
   }

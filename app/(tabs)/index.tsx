@@ -241,6 +241,7 @@ export default function WorkoutScreen() {
 
     return (
       <TouchableOpacity
+        testID={`home-workout-card-${item.id}`}
         style={[
           styles.workoutItem,
           { backgroundColor: computedCardBg, borderColor },
@@ -275,7 +276,7 @@ export default function WorkoutScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]} testID="home-screen">
       <StatusBar style={statusBarStyle} />
       <View style={styles.header}>
         <Text style={[styles.subtitle, { color: subTitleColor }]}>Deine Workouts</Text>
@@ -301,7 +302,8 @@ export default function WorkoutScreen() {
         <TouchableOpacity
           style={[styles.settingsButton, { backgroundColor: buttonBgColor, borderColor: buttonBorderColor }]}
           onPress={() => router.push('/settings')}
-          activeOpacity={0.8}>
+          activeOpacity={0.8}
+          testID="home-settings-button">
           <Text style={[styles.settingsButtonText, { color: buttonIconColor }]}>⚙</Text>
         </TouchableOpacity>
       </View>
@@ -316,7 +318,8 @@ export default function WorkoutScreen() {
                   { borderTopColor: buttonBorderColor }
               ]}
               onPress={handleCreateWorkout}
-              activeOpacity={0.8}>
+              activeOpacity={0.8}
+              testID="home-fab-create-workout">
               <Text style={[styles.fabMenuItemText, { color: buttonIconColor }]}>Neues Workout</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -325,7 +328,8 @@ export default function WorkoutScreen() {
                   { borderTopColor: buttonBorderColor }
               ]}
               onPress={handleCreateExercise}
-              activeOpacity={0.8}>
+              activeOpacity={0.8}
+              testID="home-fab-create-exercise">
               <Text style={[styles.fabMenuItemText, { color: buttonIconColor }]}>Neue Übung</Text>
             </TouchableOpacity>
           </View>
@@ -337,7 +341,8 @@ export default function WorkoutScreen() {
             showFabMenu && styles.fabActive
           ]}
           onPress={handleFabPress}
-          activeOpacity={0.8}>
+          activeOpacity={0.8}
+          testID="home-fab-main">
           <Text style={styles.fabText}>{showFabMenu ? '×' : '+'}</Text>
         </TouchableOpacity>
       </View>

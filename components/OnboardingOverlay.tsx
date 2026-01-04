@@ -62,7 +62,7 @@ export function OnboardingOverlay({ visible, onFinish }: OnboardingOverlayProps)
       <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
+            <TouchableOpacity onPress={handleSkip} style={styles.skipButton} testID="onboarding-skip-button">
               <Text style={styles.skipText}>Überspringen</Text>
             </TouchableOpacity>
           </View>
@@ -92,6 +92,7 @@ export function OnboardingOverlay({ visible, onFinish }: OnboardingOverlayProps)
               style={[styles.nextButton, { backgroundColor: currentStep.color }]}
               onPress={handleNext}
               activeOpacity={0.8}
+              testID="onboarding-next-button"
             >
               <Text style={styles.nextButtonText}>
                 {step === STEPS.length - 1 ? 'Los geht\'s!' : 'Weiter'}

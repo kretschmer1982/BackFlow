@@ -14,6 +14,7 @@ import {
   savePlannedWorkout,
 } from '@/utils/storage';
 import { useCallback, useState } from 'react';
+import { Platform } from 'react-native';
 
 export function usePlannerData() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -89,7 +90,9 @@ export function usePlannerData() {
 
       await savePlannedWorkout(dateKey, [...nextEntries, workoutId].slice(0, 3));
       await loadData();
-      await rescheduleTrainingReminders();
+      if (Platform.OS !== 'web') {
+        await rescheduleTrainingReminders();
+      }
     },
     [plannedWorkouts, loadData]
   );
@@ -118,7 +121,9 @@ export function usePlannerData() {
       // Moment: '' speichert "Pause" (explizit leer). Das ist korrekt, wenn man alle löscht.
       
       await loadData();
-      await rescheduleTrainingReminders();
+      if (Platform.OS !== 'web') {
+        await rescheduleTrainingReminders();
+      }
     },
     [plannedWorkouts, getEntriesForDate, loadData]
   );

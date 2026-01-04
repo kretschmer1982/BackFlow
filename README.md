@@ -35,3 +35,16 @@ npx expo start
 
 - If you install a new APK over an old one, the package name must match and the APK must be signed appropriately.
 - This project uses [Expo Router](https://docs.expo.dev/router/introduction/) (file-based routing).
+
+## Detox E2E (Android)
+
+- Generate the native project once (kept out of source): `npx expo prebuild --platform android --no-install`.
+- Start a Pixel 7 emulator / device and confirm the Android SDK is configured (`ANDROID_SDK_ROOT`).
+- Build the app + test artifact: `npm run detox:build`.
+- Launch the tests with `npm run test:e2e`. Detox drives the emulator and reports into `artifacts/`.
+- For visual debugging run `npm run test:e2e -- --debug-synchronization` and watch the emulator.
+
+### SDK path for Gradle
+
+- Ensure your Android SDK path is visible to Gradle. Either set `ANDROID_HOME`/`ANDROID_SDK_ROOT` globally (e.g. `%LOCALAPPDATA%\Android\Sdk`) or create `android/local.properties` containing `sdk.dir=C:\\Users\\jens.kretschmer\\AppData\\Local\\Android\\Sdk`.
+- After setting the path, rebuild once (`npm run detox:build`) so the Gradle task can locate the SDK before Detox runs the test.

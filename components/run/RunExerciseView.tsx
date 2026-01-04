@@ -1,7 +1,7 @@
 // @ts-nocheck
 import {
-  sharedRunLayoutStyles,
-  sharedRunTextStyles,
+    sharedRunLayoutStyles,
+    sharedRunTextStyles,
 } from '@/components/run/sharedRunStyles';
 import { getImageSource } from '@/constants/exercises';
 import { APP_THEME_COLORS, isLightColor } from '@/constants/theme';
@@ -9,14 +9,14 @@ import { WorkoutExercise } from '@/types/interfaces';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
-  Dimensions,
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    Image,
+    Modal,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -90,7 +90,7 @@ export function RunExerciseView({
   const exerciseHeading = `${currentExercise.name} • ${durationInfo}`;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]} testID="run-exercise-view">
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={styles.workoutScreen}>
         <View style={styles.contentWrapper}>

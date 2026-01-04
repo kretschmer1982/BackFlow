@@ -1,0 +1,136 @@
+08:41:40.125 detox[38344] [90mB[39m node_modules\detox\local-cli\cli.js test --configuration android.emu.debug --debug-synchronization --debug-synchronization
+  data: {
+    "id": "6e61092c-9f5f-4588-c99d-40e5c1ea001f",
+    "detoxConfig": {
+      "configurationName": "android.emu.debug",
+      "apps": {
+        "default": {
+          "type": "android.apk",
+          "binaryPath": "android/app/build/outputs/apk/debug/app-debug.apk"
+        }
+      },
+      "artifacts": {
+        "rootDir": "artifacts\\detox\\android.emu.debug.2026-01-04 07-41-40Z",
+        "plugins": {
+          "log": {
+            "enabled": true,
+            "keepOnlyFailedTestsArtifacts": false
+          },
+          "screenshot": {
+            "shouldTakeAutomaticSnapshots": false,
+            "shouldTakeWhen": "manual",
+            "enabled": true,
+            "keepOnlyFailedTestsArtifacts": false
+          },
+          "video": {
+            "enabled": false,
+            "keepOnlyFailedTestsArtifacts": false
+          },
+          "instruments": {
+            "enabled": false,
+            "keepOnlyFailedTestsArtifacts": false
+          },
+          "uiHierarchy": {
+            "enabled": false,
+            "keepOnlyFailedTestsArtifacts": false
+          }
+        }
+      },
+      "behavior": {
+        "init": {
+          "keepLockFile": false,
+          "reinstallApp": true,
+          "exposeGlobals": true
+        },
+        "cleanup": {
+          "shutdownDevice": false
+        },
+        "launchApp": "auto"
+      },
+      "cli": {
+        "configuration": "android.emu.debug",
+        "debugSynchronization": 3000,
+        "start": true
+      },
+      "commands": [
+        {
+          "build": "cd android && gradlew.bat assembleDebug"
+        }
+      ],
+      "device": {
+        "type": "android.emulator",
+        "avdName": "Pixel_7_API_34"
+      },
+      "logger": {
+        "level": "info",
+        "overrideConsole": true,
+        "options": {
+          "showLoggerName": true,
+          "showPid": true,
+          "showLevel": false,
+          "showMetadata": false,
+          "basepath": "C:\\Users\\jens.kretschmer\\dev\\BackFlow\\node_modules\\detox\\src",
+          "prefixers": {},
+          "stringifiers": {}
+        }
+      },
+      "testRunner": {
+        "retries": 0,
+        "forwardEnv": false,
+        "detached": false,
+        "bail": false,
+        "noRetryArgs": [
+          "shard"
+        ],
+        "jest": {
+          "setupTimeout": 300000,
+          "teardownTimeout": 30000,
+          "retryAfterCircusRetries": false,
+          "reportWorkerAssign": true
+        },
+        "args": {
+          "$0": "jest",
+          "_": [],
+          "config": "e2e/jest.config.js",
+          "--": []
+        }
+      },
+      "session": {
+        "autoStart": true,
+        "debugSynchronization": 3000
+      }
+    },
+    "detoxIPCServer": "primary-38344",
+    "testResults": [],
+    "testSessionIndex": 0,
+    "workersCount": 0
+  }
+08:41:40.141 detox[38344] [90mi[39m Server path not specified, so defaulting to ipc.config.socketRoot + ipc.config.appspace + ipc.config.id /tmp/detox.primary-38344
+08:41:40.143 detox[38344] [90mi[39m starting server on  /tmp/detox.primary-38344 
+08:41:40.143 detox[38344] [90mi[39m starting TLS server false
+08:41:40.144 detox[38344] [90mi[39m starting server as Unix || Windows Socket
+08:41:40.146 detox[38344] [90mi[39m Detox server listening on localhost:52254...
+08:41:40.149 detox[38344] [90mi[39m Serialized the session state at: C:\Users\JENS~1.KRE\AppData\Local\Temp\6e61092c-9f5f-4588-c99d-40e5c1ea001f.detox.json
+08:41:40.150 detox[38344] [90mB[39m jest --config e2e/jest.config.js
+08:41:40.165 detox[38344] [90mi[39m (node:38344) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+08:41:41.104 detox[37972] [90mi[39m                                                                                 
+=========================  THE NEW JOURNEY BEGINS  =============================
+                                                                                
+                https://wix.github.io/Detox/docs/guide/migration                
+                                                                                
+        Sorry to say that Detox 20 comes without old adapters for Jest.         
+   You have to rearrange your init code before you can continue your journey.   
+                                                                                
+           Navigate to the link and follow the migration guide steps.           
+                                                                                
+                                Sincerely yours,                                
+                                  Detox team.                                   
+                                                                                
+=========================  THE NEW JOURNEY BEGINS  =============================
+                                                                                
+                                                                                
+08:41:41.149 detox[38344] [90mE[39m Command failed with exit code = 1:
+jest --config e2e/jest.config.js
+08:41:41.150 detox[38344] [90mi[39m Detox server has been closed gracefully
+08:41:41.151 detox[38344] [90mE[39m node_modules\detox\local-cli\cli.js test --configuration android.emu.debug --debug-synchronization --debug-synchronization
