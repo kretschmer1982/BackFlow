@@ -41,3 +41,8 @@ app-example
 # generated native folders
 /ios
 /android
+test-results/
+01_app_started.png
+03_home_screen.png
+home_screen.png
+app_loaded.png

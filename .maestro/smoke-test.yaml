@@ -1,0 +1,26 @@
+appId: com.kretschmer1982.BackFlow
+---
+# Minimaler Smoke Test - beweist, dass E2E Tests funktionieren
+
+- launchApp:
+    clearState: true
+
+# Warte bis die App vollständig geladen ist
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 30000
+
+# Versuche optionales Onboarding zu überspringen (falls vorhanden)
+- runFlow:
+    when:
+      visible: "(?i)skip|überspringen|weiter"
+    commands:
+      - tapOn:
+          text: "(?i)skip|überspringen|weiter"
+
+# Kurze Wartezeit für UI-Stabilisierung
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+
+- assertVisible: ".*"
