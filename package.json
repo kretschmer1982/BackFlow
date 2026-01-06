@@ -11,7 +11,8 @@
     "lint": "expo lint",
     "generate-exercise-images": "node ./scripts/generateExerciseImages.js",
     "test:maestro": "powershell -NoLogo -ExecutionPolicy Bypass -File scripts/run-maestro.ps1 .maestro/",
-    "test:maestro:smoke": "powershell -NoLogo -ExecutionPolicy Bypass -File scripts/run-maestro.ps1 .maestro/smoke-test.yaml"
+    "test:maestro:smoke": "powershell -NoLogo -ExecutionPolicy Bypass -File scripts/run-maestro.ps1 .maestro/smoke-test.yaml",
+    "test:maestro:workout": "powershell -NoLogo -ExecutionPolicy Bypass -File scripts/run-maestro.ps1 .maestro/workout-lifecycle.yaml"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

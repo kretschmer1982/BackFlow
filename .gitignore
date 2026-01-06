@@ -41,7 +41,12 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Test & Build artifacts
 test-results/
+builds/android/*.apk
+
+# Screenshots
 01_app_started.png
 03_home_screen.png
 home_screen.png

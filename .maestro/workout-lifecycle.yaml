@@ -1,0 +1,54 @@
+appId: com.kretschmer1982.BackFlow
+---
+# Test: Workout anlegen und verifizieren
+- launchApp:
+    clearState: true
+
+# 1. Onboarding überspringen (falls sichtbar)
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-skip-button"
+    commands:
+      - tapOn:
+          id: "onboarding-skip-button"
+
+# 2. Neues Workout erstellen
+- tapOn:
+    id: "home-fab-main"
+- tapOn:
+    id: "home-fab-create-workout"
+
+# 3. Name eingeben
+- tapOn:
+    id: "create-workout-title-input"
+- inputText: "E2E Test Workout"
+- tapOn:
+    id: "create-workout-title-confirm-button"
+
+# 4. Drei Übungen aus der Bibliothek hinzufügen
+- tapOn:
+    id: "exercise-library-item-unterarmstutz"
+- tapOn:
+    id: "exercise-library-item-supermann"
+- tapOn:
+    id: "exercise-library-item-diagonaler-vierfusslerstand"
+
+# 5. Speichern
+- tapOn:
+    id: "create-save-workout-button"
+
+# 6. Verifizieren auf Home Screen
+- assertVisible: "E2E Test Workout"
+- assertVisible: "3 Übungen"
+
+# 7. Workout wieder löschen
+- tapOn:
+    text: "×"
+    index: 0
+
+# 8. Löschen im Alert bestätigen
+- tapOn: "Löschen"
+
+# 9. Verifizieren, dass es weg ist
+- assertNotVisible: "E2E Test Workout"

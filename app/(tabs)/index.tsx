@@ -26,6 +26,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { normalizeTestIdValue } from '@/utils/testIds';
 
 function toLocalDateKey(d: Date) {
   const yyyy = d.getFullYear();
@@ -228,6 +229,7 @@ export default function WorkoutScreen() {
   };
 
   const renderWorkoutItem = ({ item }: { item: Workout }) => {
+    const workoutSlug = normalizeTestIdValue(item.name);
     const { cardBackground: computedCardBg, cardBorder, textColor, subtextColor } = getWorkoutCardColors(backgroundColor);
     const plannedInfo = todayPlannedByWorkoutId.get(item.id);
     const borderColor = plannedInfo ? accentColor : cardBorder;
@@ -241,7 +243,7 @@ export default function WorkoutScreen() {
 
     return (
       <TouchableOpacity
-        testID={`home-workout-card-${item.id}`}
+        testID={`home-workout-card-${workoutSlug}`}
         style={[
           styles.workoutItem,
           { backgroundColor: computedCardBg, borderColor },
@@ -249,8 +251,14 @@ export default function WorkoutScreen() {
         onPress={() => handleWorkoutPress(item)}
         activeOpacity={0.7}>
         <View style={styles.workoutContent}>
-          <Text style={[styles.workoutName, { color: textColor }]}>{item.name}</Text>
-          <Text style={[styles.workoutInfo, { color: subtextColor }]}>
+          <Text
+            testID={`home-workout-name-${workoutSlug}`}
+            style={[styles.workoutName, { color: textColor }]}>
+            {item.name}
+          </Text>
+          <Text
+            testID={`home-workout-count-${workoutSlug}`}
+            style={[styles.workoutInfo, { color: subtextColor }]}>
             {item.exercises.length} {item.exercises.length === 1 ? 'Übung' : 'Übungen'}
           </Text>
           {!!plannedInfo && (

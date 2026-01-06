@@ -8,6 +8,7 @@ import {
   getWorkoutById,
   saveWorkout,
 } from '@/utils/storage';
+import { normalizeTestIdValue } from '@/utils/testIds';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -45,6 +46,29 @@ function isDarkColor(hex: string) {
   return luminance < 0.5;
 }
 
+const AMOUNT_INPUT_TEST_ID_PREFIX = 'create-amount-input';
+const LIBRARY_ITEM_TEST_ID_PREFIX = 'exercise-library-item';
+const SELECTED_EXERCISE_TEST_ID_PREFIX = 'create-selected-exercise';
+
+type WorkoutEntry = WorkoutExercise & {
+  isWarmupEntry?: boolean;
+  warmupName?: string;
+  testIdSlug?: string;
+};
+
+const getWorkoutEntrySlug = (entry: WorkoutEntry) =>
+  entry.testIdSlug ??
+  normalizeTestIdValue(entry.warmupName ?? entry.name ?? entry.id ?? 'item');
+
+const getAmountInputTestId = (entry: WorkoutEntry) =>
+  `${AMOUNT_INPUT_TEST_ID_PREFIX}-${getWorkoutEntrySlug(entry)}`;
+
+const getSelectedExerciseTestId = (entry: WorkoutEntry) =>
+  `${SELECTED_EXERCISE_TEST_ID_PREFIX}-${getWorkoutEntrySlug(entry)}`;
+
+const getExerciseLibraryTestId = (exercise: Exercise) =>
+  `${LIBRARY_ITEM_TEST_ID_PREFIX}-${normalizeTestIdValue(exercise.name)}`;
+
 export default function CreateWorkoutScreen() {
   const router = useRouter();
   const { workoutId } = useLocalSearchParams<{ workoutId?: string }>();
@@ -53,18 +77,13 @@ export default function CreateWorkoutScreen() {
   const [isTitleEditable, setIsTitleEditable] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string>(APP_THEME_COLORS.dark.background);
   const [selectedExercises, setSelectedExercises] =
-    useState<WorkoutExercise[]>([]);
+    useState<WorkoutEntry[]>([]);
   const [allExercises, setAllExercises] = useState<Exercise[]>(EXERCISES);
   const [selectedWarmupId, setSelectedWarmupId] = useState<string | null>(null);
   const warmupOptions = WARM_UP_LIBRARY;
   const warmupOption = warmupOptions[0] ?? null;
   const toggleWarmupSelection = (warmupId: string) => {
     setSelectedWarmupId((prev) => (prev === warmupId ? null : warmupId));
-  };
-
-  type WorkoutEntry = WorkoutExercise & {
-    isWarmupEntry?: boolean;
-    warmupName?: string;
   };
 
   const buildWarmupEntry = (warmup: Warmup): WorkoutEntry => ({
@@ -77,6 +96,7 @@ export default function CreateWorkoutScreen() {
     source: 'custom',
     isWarmupEntry: true,
     warmupName: 'Warm up 1',
+    testIdSlug: `warmup-${normalizeTestIdValue(warmup.name ?? warmup.id)}`,
   });
 
   const selectedWarmup = selectedWarmupId
@@ -106,12 +126,16 @@ export default function CreateWorkoutScreen() {
   const inputBorder = isDarkBackground ? '#333333' : '#d1d5db';
   const placeholderColor = isDarkBackground ? '#666666' : '#9ca3af';
 
-  const createExerciseInstance = (exercise: Exercise): WorkoutExercise => ({
-    ...exercise,
-    instanceId: `${exercise.name}-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2)}`,
-  });
+  const createExerciseInstance = (exercise: Exercise): WorkoutEntry => {
+    const slug = normalizeTestIdValue(exercise.name);
+    return {
+      ...exercise,
+      instanceId: `${exercise.name}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`,
+      testIdSlug: slug,
+    };
+  };
 
   // Lade Workout zum Bearbeiten
   useEffect(() => {
@@ -124,11 +148,12 @@ export default function CreateWorkoutScreen() {
             workout.warmupId ??
             (workout.includeWarmup ? warmupOption?.id : null);
           setSelectedWarmupId(warmupId ?? null);
-          const exercisesWithIds = workout.exercises.map((ex, index) => ({
+          const exercisesWithIds: WorkoutEntry[] = workout.exercises.map((ex, index) => ({
             ...ex,
             instanceId:
               ex.instanceId ||
               `${ex.name}-${index}-${Date.now().toString(36)}`,
+            testIdSlug: ex.testIdSlug ?? normalizeTestIdValue(ex.name),
           }));
           setSelectedExercises(exercisesWithIds);
 
@@ -281,6 +306,7 @@ export default function CreateWorkoutScreen() {
           />
           <Pressable
             style={styles.titleEditButton}
+            testID="create-workout-title-confirm-button"
             onPress={() => {
               if (!isTitleEditable) {
                 titleInputRef.current?.focus();
@@ -325,6 +351,7 @@ export default function CreateWorkoutScreen() {
                     <View style={styles.warmupCardHeader}>
                       <Pressable
                         onPress={() => warmupOption && toggleWarmupSelection(warmupOption.id)}
+                        testID="exercise-library-warmup-card"
                         style={{ flex: 1 }}>
                       <Text
                         style={[styles.warmupCardTitle, { color: textColor }]}
@@ -350,11 +377,12 @@ export default function CreateWorkoutScreen() {
                   </View>
                 </View>
                 )}
-                {allExercises.map((exercise) => (
+                {allExercises.map((exercise, index) => (
                   <View key={exercise.name} style={[styles.exerciseCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
                     <View style={styles.exerciseHeader}>
                       <Pressable
                         style={styles.exerciseHeaderMain}
+                        testID={getExerciseLibraryTestId(exercise)}
                         onPress={() => handleAddExerciseFromLibrary(exercise)}>
                         <Text
                           style={[styles.exerciseName, { color: textColor }]}
@@ -406,6 +434,8 @@ export default function CreateWorkoutScreen() {
                 isActive,
               }: RenderItemParams<WorkoutEntry>) => {
                 const key = item.instanceId ?? item.name;
+                const amountInputTestId = getAmountInputTestId(item);
+                const selectedExerciseTestId = getSelectedExerciseTestId(item);
                 const amountValue = exerciseAmountInputs.has(key)
                   ? exerciseAmountInputs.get(key) ?? ''
                   : item.amount?.toString() || '';
@@ -435,7 +465,7 @@ export default function CreateWorkoutScreen() {
                         }
                       }}
                       activeOpacity={0.7}
-                      testID={`create-selected-exercise-${key}`}>
+                      testID={selectedExerciseTestId}>
                       <View style={styles.selectedContentRow}>
                         <View style={styles.selectedTextColumn}>
                           <Text style={[styles.selectedExerciseName, { color: textColor }]}>
@@ -457,7 +487,7 @@ export default function CreateWorkoutScreen() {
                                   item.amount ? item.amount.toString() : undefined
                                 }
                                 placeholderTextColor={placeholderColor}
-                                testID={`create-exercise-amount-input-${key}`}
+                                testID={amountInputTestId}
                               />
                             </View>
                           )}

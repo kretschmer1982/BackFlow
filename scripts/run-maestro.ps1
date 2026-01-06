@@ -81,6 +81,16 @@ function Get-DesiredVersionCode {
     return $null
 }
 
+function Get-DesiredVersionName {
+    $buildFile = Join-Path (Resolve-Path .).Path "android\app\build.gradle"
+    foreach ($line in Get-Content $buildFile) {
+        if ($line -match 'versionName\s+"([^"]+)"') {
+            return $Matches[1]
+        }
+    }
+    return $null
+}
+
 function Get-InstalledVersionCode {
     $dumpsys = & $adbPath -s $emulatorId shell dumpsys package com.kretschmer1982.BackFlow 2>$null
     if (-not $dumpsys) {
@@ -108,6 +118,21 @@ function Install-ReleaseIfNeeded {
         return
     }
 
+    # Zuerst prüfen, ob ein passendes APK im builds/ Ordner liegt
+    $desiredName = Get-DesiredVersionName
+    if ($desiredName) {
+        $prebuiltApk = Join-Path (Resolve-Path .).Path "builds\android\app-release-$desiredName.apk"
+        if (Test-Path $prebuiltApk) {
+            Write-Host "Installiere existierendes APK: $prebuiltApk" -ForegroundColor Cyan
+            & $adbPath -s $emulatorId install -r $prebuiltApk | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "Installation erfolgreich." -ForegroundColor Green
+                return
+            }
+            Write-Warning "Installation des existierenden APKs fehlgeschlagen. Versuche Neubau via Gradle..."
+        }
+    }
+
     $gradlew = Join-Path (Resolve-Path .).Path "android\gradlew.bat"
     if (-not (Test-Path $gradlew)) {
         Write-Error "gradlew nicht gefunden: $gradlew"
@@ -130,6 +155,23 @@ function Ensure-AppStateAtHome {
 }
 
 $emulatorId = Ensure-Emulator
+if ($emulatorId) {
+    & $adbPath -s $emulatorId wait-for-device | Out-Null
+    $bootProp = (& $adbPath -s $emulatorId shell getprop sys.boot_completed 2>$null).Trim()
+    if ($bootProp -ne "1") {
+        $maxRetries = 40
+        $retry = 0
+        while ($retry -lt $maxRetries) {
+            $focusOutput = & $adbPath -s $emulatorId shell dumpsys window windows 2>$null
+            $focusLine = $focusOutput | Select-String -Pattern 'mCurrentFocus='
+            if ($focusLine -and $focusLine -notmatch 'mCurrentFocus\s*=\s*null') {
+                break
+            }
+            Start-Sleep -Seconds 2
+            $retry++
+        }
+    }
+}
 $skipReleaseInstall = $SkipReleaseInstall.IsPresent -or ($env:BACKFLOW_SKIP_RELEASE_INSTALL -eq "1")
 if ($skipReleaseInstall) {
     Write-Host "Release-Install wird übersprungen (installed already/invoked with skip flag)." -ForegroundColor Yellow
@@ -143,10 +185,17 @@ $resultsDir = Join-Path $ResultsRoot $timestamp
 $artifactsDir = Join-Path $resultsDir "artifacts"
 New-Item -ItemType Directory -Force -Path $artifactsDir | Out-Null
 
+$versionCode = Get-DesiredVersionCode
+$versionName = Get-DesiredVersionName
+
 $meta = @{
     timestamp   = (Get-Date).ToString("o")
     flow        = $FlowPath
     resultsPath = (Resolve-Path $resultsDir).Path
+    appVersion  = @{
+        code = $versionCode
+        name = $versionName
+    }
 }
 
 Write-Host "Running Maestro tests from: $FlowPath" -ForegroundColor Cyan
