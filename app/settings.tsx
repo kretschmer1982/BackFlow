@@ -1,9 +1,11 @@
 import { APP_THEME_COLORS, BACKGROUND_OPTIONS, isLightColor } from '@/constants/theme';
 import { getSettings, updateSettings } from '@/utils/storage';
+import { seedDemoWorkouts } from '@/utils/seed';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
 import {
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -16,6 +18,11 @@ export default function SettingsScreen() {
   const [backgroundColor, setBackgroundColor] = useState<string>(APP_THEME_COLORS.dark.background);
   const [enableBeep, setEnableBeep] = useState<boolean>(true);
   const [exerciseTransitionSeconds, setExerciseTransitionSeconds] = useState<number>(15);
+
+  const handleCreateDemoWorkout = async () => {
+    const count = await seedDemoWorkouts();
+    Alert.alert('Erfolg', `${count} Demo-Workouts wurden erstellt.`);
+  };
 
   const loadSettings = useCallback(async () => {
     const settings = await getSettings();
@@ -190,6 +197,35 @@ export default function SettingsScreen() {
                 await updateSettings({ exerciseTransitionSeconds: next } as any);
               }}>
               <Text style={[styles.stepButtonText, isLightBackground && { color: lightTextColor }]}>+</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Test-Daten (nur für Maestro/Dev) */}
+        <View style={styles.entryRow}>
+          <View style={styles.entryTextContainer}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                isLightBackground && { color: lightTextColor },
+              ]}>
+              Test-Daten
+            </Text>
+          </View>
+          <View style={styles.entryRight}>
+            {/* TestID: Demo-Workouts erstellen Button */}
+            <Pressable
+              testID="settings-demo-button"
+              style={[
+                styles.stepButton,
+                { width: 'auto', paddingHorizontal: 12 },
+                isLightBackground && {
+                  backgroundColor: APP_THEME_COLORS.light.buttonBackground,
+                  borderColor: lightBorderColor,
+                },
+              ]}
+              onPress={handleCreateDemoWorkout}>
+              <Text style={[styles.stepButtonText, { fontSize: 14 }, isLightBackground && { color: lightTextColor }]}>3 Demo Workouts</Text>
             </Pressable>
           </View>
         </View>

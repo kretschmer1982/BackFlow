@@ -26,7 +26,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { normalizeTestIdValue } from '@/utils/testIds';
 
 function toLocalDateKey(d: Date) {
   const yyyy = d.getFullYear();
@@ -228,8 +227,7 @@ export default function WorkoutScreen() {
     router.push('/create-exercise');
   };
 
-  const renderWorkoutItem = ({ item }: { item: Workout }) => {
-    const workoutSlug = normalizeTestIdValue(item.name);
+  const renderWorkoutItem = ({ item, index }: { item: Workout; index: number }) => {
     const { cardBackground: computedCardBg, cardBorder, textColor, subtextColor } = getWorkoutCardColors(backgroundColor);
     const plannedInfo = todayPlannedByWorkoutId.get(item.id);
     const borderColor = plannedInfo ? accentColor : cardBorder;
@@ -242,8 +240,9 @@ export default function WorkoutScreen() {
     const plannedLabel = plannedLabelParts.join(' • ');
 
     return (
+      // TestID: Workout-Karte auf Home (Index-basiert)
       <TouchableOpacity
-        testID={`home-workout-card-${workoutSlug}`}
+        testID={`home-workout-card-${index}`}
         style={[
           styles.workoutItem,
           { backgroundColor: computedCardBg, borderColor },
@@ -251,13 +250,15 @@ export default function WorkoutScreen() {
         onPress={() => handleWorkoutPress(item)}
         activeOpacity={0.7}>
         <View style={styles.workoutContent}>
+          {/* TestID: Workout-Name auf Home */}
           <Text
-            testID={`home-workout-name-${workoutSlug}`}
+            testID={`home-workout-name-${index}`}
             style={[styles.workoutName, { color: textColor }]}>
             {item.name}
           </Text>
+          {/* TestID: Übungsanzahl auf Home */}
           <Text
-            testID={`home-workout-count-${workoutSlug}`}
+            testID={`home-workout-count-${index}`}
             style={[styles.workoutInfo, { color: subtextColor }]}>
             {item.exercises.length} {item.exercises.length === 1 ? 'Übung' : 'Übungen'}
           </Text>
@@ -284,6 +285,7 @@ export default function WorkoutScreen() {
   };
 
   return (
+    // TestID: Home-Screen Container
     <SafeAreaView style={[styles.container, { backgroundColor }]} testID="home-screen">
       <StatusBar style={statusBarStyle} />
       <View style={styles.header}>
@@ -307,6 +309,7 @@ export default function WorkoutScreen() {
       )}
 
       <View style={styles.settingsButtonContainer}>
+        {/* TestID: Einstellungen-Button */}
         <TouchableOpacity
           style={[styles.settingsButton, { backgroundColor: buttonBgColor, borderColor: buttonBorderColor }]}
           onPress={() => router.push('/settings')}
@@ -319,6 +322,7 @@ export default function WorkoutScreen() {
       <View style={styles.fabContainer}>
         {showFabMenu && (
           <View style={[styles.fabMenu, { backgroundColor: themeCardBg, borderColor: buttonBorderColor }]}>
+            {/* TestID: FAB-Menü - Neues Workout erstellen */}
             <TouchableOpacity
               style={[
                   styles.fabMenuItem, 
@@ -330,6 +334,7 @@ export default function WorkoutScreen() {
               testID="home-fab-create-workout">
               <Text style={[styles.fabMenuItemText, { color: buttonIconColor }]}>Neues Workout</Text>
             </TouchableOpacity>
+            {/* TestID: FAB-Menü - Neue Übung erstellen */}
             <TouchableOpacity
               style={[
                   styles.fabMenuItem,
@@ -342,6 +347,7 @@ export default function WorkoutScreen() {
             </TouchableOpacity>
           </View>
         )}
+        {/* TestID: Haupt-FAB zum Öffnen des Menüs */}
         <TouchableOpacity
           style={[
             styles.fab, 

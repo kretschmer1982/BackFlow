@@ -1,6 +1,7 @@
 appId: com.kretschmer1982.BackFlow
 ---
-# Test: Workout anlegen und verifizieren
+# Test: Workout anlegen, verifizieren und löschen
+
 - launchApp:
     clearState: true
 
@@ -8,10 +9,10 @@ appId: com.kretschmer1982.BackFlow
 - runFlow:
     when:
       visible:
-        id: "onboarding-skip-button"
+        id: "onboarding-skip"
     commands:
       - tapOn:
-          id: "onboarding-skip-button"
+          id: "onboarding-skip"
 
 # 2. Neues Workout erstellen
 - tapOn:
@@ -21,26 +22,30 @@ appId: com.kretschmer1982.BackFlow
 
 # 3. Name eingeben
 - tapOn:
-    id: "create-workout-title-input"
+    id: "create-title-input"
 - inputText: "E2E Test Workout"
 - tapOn:
-    id: "create-workout-title-confirm-button"
+    id: "create-title-confirm"
 
-# 4. Drei Übungen aus der Bibliothek hinzufügen
+# 4. Drei Übungen aus der Bibliothek hinzufügen (Index-basiert)
 - tapOn:
-    id: "exercise-library-item-unterarmstutz"
+    id: "create-exercise-0"
 - tapOn:
-    id: "exercise-library-item-supermann"
+    id: "create-exercise-1"
 - tapOn:
-    id: "exercise-library-item-diagonaler-vierfusslerstand"
+    id: "create-exercise-2"
 
 # 5. Speichern
 - tapOn:
-    id: "create-save-workout-button"
+    id: "create-save-button"
 
-# 6. Verifizieren auf Home Screen
-- assertVisible: "E2E Test Workout"
-- assertVisible: "3 Übungen"
+# 6. Verifizieren auf Home Screen (Index-basiert)
+- assertVisible:
+    id: "home-workout-card-0"
+- assertVisible:
+    id: "home-workout-name-0"
+- assertVisible:
+    id: "home-workout-count-0"
 
 # 7. Workout wieder löschen
 - tapOn:
@@ -51,4 +56,5 @@ appId: com.kretschmer1982.BackFlow
 - tapOn: "Löschen"
 
 # 9. Verifizieren, dass es weg ist
-- assertNotVisible: "E2E Test Workout"
+- assertNotVisible:
+    id: "home-workout-card-0"

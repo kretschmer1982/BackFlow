@@ -4,11 +4,13 @@ param(
     [string]$FlowPath = ".maestro/",
     [string]$ResultsRoot = "test-results/maestro",
     [string]$AvdName = "Pixel_7_API_36",
-    [switch]$SkipReleaseInstall
+    [switch]$SkipInstall
 )
 
 $env:PATH = "$env:USERPROFILE\.maestro\maestro\bin;$env:PATH"
 $env:ANDROID_SDK_ROOT = "$env:LOCALAPPDATA\Android\Sdk"
+$workspaceRoot = (Resolve-Path ".").Path
+$buildsRoot = Join-Path $workspaceRoot "builds\android"
 
 if (-not (Test-Path $FlowPath)) {
     Write-Error "Flow-Pfad '$FlowPath' existiert nicht."
@@ -71,80 +73,6 @@ function Ensure-Emulator {
     return $emulatorId
 }
 
-function Get-DesiredVersionCode {
-    $buildFile = Join-Path (Resolve-Path .).Path "android\app\build.gradle"
-    foreach ($line in Get-Content $buildFile) {
-        if ($line -match 'versionCode\s+(\d+)') {
-            return [int]$Matches[1]
-        }
-    }
-    return $null
-}
-
-function Get-DesiredVersionName {
-    $buildFile = Join-Path (Resolve-Path .).Path "android\app\build.gradle"
-    foreach ($line in Get-Content $buildFile) {
-        if ($line -match 'versionName\s+"([^"]+)"') {
-            return $Matches[1]
-        }
-    }
-    return $null
-}
-
-function Get-InstalledVersionCode {
-    $dumpsys = & $adbPath -s $emulatorId shell dumpsys package com.kretschmer1982.BackFlow 2>$null
-    if (-not $dumpsys) {
-        return $null
-    }
-
-    $match = [regex]::Match($dumpsys, 'versionCode=(\d+)')
-    if ($match.Success) {
-        return [int]$match.Groups[1].Value
-    }
-
-    return $null
-}
-
-function Install-ReleaseIfNeeded {
-    $desiredVersion = Get-DesiredVersionCode
-    if (-not $desiredVersion) {
-        Write-Host "versionCode konnte nicht ermittelt werden - Release-Install wird übersprungen." -ForegroundColor Yellow
-        return
-    }
-
-    $installedVersion = Get-InstalledVersionCode
-    if ($installedVersion -and $installedVersion -eq $desiredVersion) {
-        Write-Host "Release in Version $desiredVersion bereits installiert." -ForegroundColor Yellow
-        return
-    }
-
-    # Zuerst prüfen, ob ein passendes APK im builds/ Ordner liegt
-    $desiredName = Get-DesiredVersionName
-    if ($desiredName) {
-        $prebuiltApk = Join-Path (Resolve-Path .).Path "builds\android\app-release-$desiredName.apk"
-        if (Test-Path $prebuiltApk) {
-            Write-Host "Installiere existierendes APK: $prebuiltApk" -ForegroundColor Cyan
-            & $adbPath -s $emulatorId install -r $prebuiltApk | Out-Null
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "Installation erfolgreich." -ForegroundColor Green
-                return
-            }
-            Write-Warning "Installation des existierenden APKs fehlgeschlagen. Versuche Neubau via Gradle..."
-        }
-    }
-
-    $gradlew = Join-Path (Resolve-Path .).Path "android\gradlew.bat"
-    if (-not (Test-Path $gradlew)) {
-        Write-Error "gradlew nicht gefunden: $gradlew"
-        exit 1
-    }
-
-    Write-Host "Baue und installiere Release $desiredVersion..." -ForegroundColor Cyan
-    Push-Location "android"
-    & $gradlew installRelease | Out-Null
-    Pop-Location
-}
-
 function Ensure-AppStateAtHome {
     & $adbPath -s $emulatorId shell input keyevent 4 | Out-Null
     Start-Sleep -Milliseconds 200
@@ -152,6 +80,63 @@ function Ensure-AppStateAtHome {
     Start-Sleep -Milliseconds 200
     & $adbPath -s $emulatorId shell input keyevent 3 | Out-Null
     Write-Host "App wurde in Initialzustand gebracht." -ForegroundColor Cyan
+}
+
+function Parse-Version {
+    param([string]$Version)
+    $parts = $Version.Split('.') | ForEach-Object { [int]$_ }
+    while ($parts.Count -lt 3) { $parts += 0 }
+    return $parts
+}
+
+function Compare-Version {
+    param($a, $b)
+    for ($i = 0; $i -lt 3; $i++) {
+        if ($a[$i] -gt $b[$i]) { return 1 }
+        if ($a[$i] -lt $b[$i]) { return -1 }
+    }
+    return 0
+}
+
+function Get-HighestApk {
+    $files = Get-ChildItem -Path $buildsRoot -Filter "app-*-*.apk" -ErrorAction SilentlyContinue
+    $best = $null
+    foreach ($file in $files) {
+        if ($file.Name -match '^app-(release|prebuild)-(\d+\.\d+\.\d+)\.apk$') {
+            $entry = [pscustomobject]@{
+                Path = $file.FullName
+                Type = $Matches[1]
+                Version = $Matches[2]
+                VersionParts = Parse-Version $Matches[2]
+            }
+            if (-not $best) {
+                $best = $entry
+                continue
+            }
+            $cmp = Compare-Version $entry.VersionParts $best.VersionParts
+            if ($cmp -gt 0) {
+                $best = $entry
+            } elseif ($cmp -eq 0 -and $entry.Type -eq "release" -and $best.Type -eq "prebuild") {
+                $best = $entry
+            }
+        }
+    }
+    return $best
+}
+
+function Install-Apk {
+    param(
+        [string]$Path,
+        [string]$Description
+    )
+    Write-Host ("Installiere {0}: {1}" -f $Description, $Path) -ForegroundColor Cyan
+    & $adbPath -s $emulatorId install -r $Path | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Installation erfolgreich." -ForegroundColor Green
+        return $true
+    }
+    Write-Warning "Installation von $Description fehlgeschlagen."
+    return $false
 }
 
 $emulatorId = Ensure-Emulator
@@ -172,11 +157,16 @@ if ($emulatorId) {
         }
     }
 }
-$skipReleaseInstall = $SkipReleaseInstall.IsPresent -or ($env:BACKFLOW_SKIP_RELEASE_INSTALL -eq "1")
-if ($skipReleaseInstall) {
-    Write-Host "Release-Install wird übersprungen (installed already/invoked with skip flag)." -ForegroundColor Yellow
+
+if (-not $SkipInstall) {
+    $apk = Get-HighestApk
+    if (-not $apk) {
+        Write-Error "Keine vorbereitete Release- oder Prebuild-APK gefunden."
+        exit 1
+    }
+    Install-Apk -Path $apk.Path -Description "$($apk.Type) $($apk.Version)"
 } else {
-    Install-ReleaseIfNeeded
+    Write-Host "APK-Installation übersprungen (SkipInstall gesetzt)." -ForegroundColor Yellow
 }
 
 New-Item -ItemType Directory -Force -Path $ResultsRoot | Out-Null
@@ -184,19 +174,6 @@ $timestamp = (Get-Date).ToString("yyyyMMdd_HHmmss")
 $resultsDir = Join-Path $ResultsRoot $timestamp
 $artifactsDir = Join-Path $resultsDir "artifacts"
 New-Item -ItemType Directory -Force -Path $artifactsDir | Out-Null
-
-$versionCode = Get-DesiredVersionCode
-$versionName = Get-DesiredVersionName
-
-$meta = @{
-    timestamp   = (Get-Date).ToString("o")
-    flow        = $FlowPath
-    resultsPath = (Resolve-Path $resultsDir).Path
-    appVersion  = @{
-        code = $versionCode
-        name = $versionName
-    }
-}
 
 Write-Host "Running Maestro tests from: $FlowPath" -ForegroundColor Cyan
 Write-Host "Results are written to: $resultsDir" -ForegroundColor Cyan
@@ -207,7 +184,15 @@ maestro test $FlowPath `
     --test-output-dir $artifactsDir
 
 $exitCode = $LASTEXITCODE
-$meta.status = if ($exitCode -eq 0) { "passed" } else { "failed" }
+$meta = @{
+    timestamp   = (Get-Date).ToString("o")
+    flow        = $FlowPath
+    resultsPath = (Resolve-Path $resultsDir).Path
+    appVersion  = @{
+        apk = if ($apk) { [string]$apk.Name } else { $null }
+    }
+    status = if ($exitCode -eq 0) { "passed" } else { "failed" }
+}
 
 $meta | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 "$resultsDir\meta.json"
 $meta | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 test-results/.last-run.json

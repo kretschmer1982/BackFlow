@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const NAV_TO_LIST_GAP = 16;
+const WEEKDAYS_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
 export default function PlannerScreen() {
   const router = useRouter();
@@ -257,16 +258,20 @@ export default function PlannerScreen() {
 
   // --- Render Helpers ---
 
-  const renderCalendarRow = (date: Date) => {
+  // Rendert eine Zeile im Kalender für einen bestimmten Tag
+  const renderCalendarRow = (date: Date, pageIndex: number) => {
     const entries = getEntriesForDate(date);
     const dateKey = toLocalDateKey(date);
     const isPast = dateKey < todayKey;
     const isToday = dateKey === todayKey;
+    const dayName = WEEKDAYS_SHORT[date.getDay()];
+    // Nur die mittlere Seite (pageIndex=1) bekommt TestIDs für Maestro-Tests
+    const dayNameLower = dayName.toLowerCase();
 
     const rowContainerStyle = [
       styles.planRowContainer,
       { backgroundColor: cardBg, borderColor },
-      isToday && { borderColor: accentColor + '80' } // Nur Border färben, Background bleibt cardBg
+      isToday && { borderColor: accentColor + '80' }
     ];
 
     const chipStyle = [
@@ -277,7 +282,10 @@ export default function PlannerScreen() {
     const showAddButton = !isPast && entries.length === 0;
 
     return (
-      <View style={[styles.dayItem, { height: rowLayout.rowH, marginBottom: rowLayout.gap }]}>
+      // TestID: Tageszeile im Planner (z.B. planner-row-di)
+      <View 
+        testID={pageIndex === 1 ? `planner-row-${dayNameLower}` : undefined}
+        style={[styles.dayItem, { height: rowLayout.rowH, marginBottom: rowLayout.gap }]}>
         <View style={[styles.dateContainer, isToday && { 
             borderColor: accentColor + '50', 
             backgroundColor: accentColor + '20',
@@ -308,15 +316,26 @@ export default function PlannerScreen() {
                 const e = entries[0];
                 const w = getWorkoutById(e.workoutId);
                 const done = !!e.completed;
+                const workoutName = w ? w.name : 'Gelöschtes Workout';
+                const fullText = `${workoutName}${done ? ' ✓' : ''}`;
+
                 return (
                   <TouchableOpacity
                     style={[chipStyle, styles.trainingChipFullHeight]}
                     onPress={() => openEditForEntry(date, 0)}
                     activeOpacity={0.85}>
-                    <Text style={[styles.workoutName, { color: textColor }]} numberOfLines={1}>
-                      {w ? w.name : 'Gelöschtes Workout'} {done ? '✓' : ''}
+                    {/* TestID: Workout-Name im Planner (z.B. planner-workout-di) */}
+                    <Text 
+                      testID={pageIndex === 1 ? `planner-workout-${dayNameLower}` : undefined}
+                      style={[styles.workoutName, { color: textColor }]} 
+                      numberOfLines={1}>
+                      {fullText}
                     </Text>
-                    <Text style={[styles.workoutDetails, { color: subtextColor }]} numberOfLines={1}>
+                    {/* TestID: Workout-Details im Planner (z.B. planner-details-di) */}
+                    <Text 
+                      testID={pageIndex === 1 ? `planner-details-${dayNameLower}` : undefined}
+                      style={[styles.workoutDetails, { color: subtextColor }]} 
+                      numberOfLines={1}>
                       {typeof e.durationMinutes === 'number'
                         ? `${e.durationMinutes} Min.`
                         : w
@@ -344,10 +363,16 @@ export default function PlannerScreen() {
                     style={chipStyle}
                     onPress={() => openEditForEntry(date, idx)}
                     activeOpacity={0.85}>
-                    <Text style={[styles.workoutName, { color: textColor }]} numberOfLines={1}>
+                    {/* TestID: Workout-Name bei mehreren Workouts (z.B. planner-workout-di-0) */}
+                    <Text 
+                      testID={pageIndex === 1 ? `planner-workout-${dayNameLower}-${idx}` : undefined}
+                      style={[styles.workoutName, { color: textColor }]} 
+                      numberOfLines={1}>
                       {w ? w.name : 'Gelöschtes Workout'} {done ? '✓' : ''}
                     </Text>
-                    <Text style={[styles.workoutDetails, { color: subtextColor }]} numberOfLines={1}>
+                    <Text 
+                      style={[styles.workoutDetails, { color: subtextColor }]} 
+                      numberOfLines={1}>
                       {typeof e.durationMinutes === 'number'
                         ? `${e.durationMinutes} Min.`
                         : w
@@ -435,12 +460,13 @@ export default function PlannerScreen() {
               <View key={`${toLocalDateKey(start)}-${idx}`} style={[styles.weekPage, { width: screenWidth }]}>
                 <View style={[styles.listContent, { justifyContent: rowLayout.canCenter ? 'center' : 'flex-start' }]}>
                   {pageDays.map((d) => (
-                    <View key={toLocalDateKey(d)}>{renderCalendarRow(d)}</View>
+                    <View key={toLocalDateKey(d)}>{renderCalendarRow(d, idx)}</View>
                   ))}
-                  {/* Routinetage Button */}
+                  {/* TestID: Button für Routinetage-Einstellungen */}
                   <View style={[styles.dayItem, { height: rowLayout.rowH, marginBottom: 0 }]}>
                     <View style={styles.dateContainer} />
                     <TouchableOpacity
+                      testID="planner-routine-button"
                       style={[styles.planContainer, styles.routinePlanContainer, { backgroundColor: cardBg, borderColor }]}
                       onPress={() => router.push('/planner-settings')}
                       activeOpacity={0.85}>

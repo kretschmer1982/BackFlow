@@ -1,0 +1,10 @@
+rules:
+  - id: planner-routine-ids
+    description: >
+      Neue Maestro-Flow-Dateien sollen die `planner-routine-ids.yaml`
+      als Referenz nehmen und die sanitizeTestId-Logik nutzen, damit
+      Assertions über spezifische `resource-id`s stabil bleiben.
+    apply_to:
+      - ".maestro/*.yaml"
+    template: ".maestro/planner-routine-ids.yaml"
+

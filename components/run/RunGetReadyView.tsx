@@ -1,20 +1,20 @@
 import {
-  sharedRunLayoutStyles,
-  sharedRunTextStyles,
+    sharedRunLayoutStyles,
+    sharedRunTextStyles,
 } from '@/components/run/sharedRunStyles';
-import { getImageSource } from '@/constants/exercises';
 import { APP_THEME_COLORS, isLightColor } from '@/constants/theme';
 import { WorkoutExercise } from '@/types/interfaces';
+import { getImageSource } from '@/utils/exerciseImage';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
-  Dimensions,
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    Dimensions,
+    Image,
+    Modal,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

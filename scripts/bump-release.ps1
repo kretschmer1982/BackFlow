@@ -1,6 +1,8 @@
 param(
     [ValidateSet("main", "major", "minor")]
-    [string]$ChangeLevel = "minor"
+    [string]$ChangeLevel = "minor",
+    [switch]$Debug,
+    [switch]$Prebuild
 )
 
 Set-StrictMode -Version Latest
@@ -44,15 +46,52 @@ $newVersionCode = ($parts[0] * 10000) + ($parts[1] * 100) + $parts[2]
 $updated = $content -replace 'versionCode\s+\d+', "versionCode $newVersionCode"
 $updated = $updated -replace 'versionName\s+"[^"]+"', "versionName `"$newVersionName`""
 
-# UTF-8 ohne BOM schreiben (PowerShell 5.1 kompatibel)
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 [System.IO.File]::WriteAllText($buildGradle, $updated, $utf8NoBom)
 
-Write-Host "Neue Version: $newVersionName (code $newVersionCode)" -ForegroundColor Cyan
+function Write-LastBuildType {
+    param([string]$Type)
+    $lastBuildFile = Join-Path (Resolve-Path .).Path "builds\android\last-build-type.txt"
+    $dir = Split-Path $lastBuildFile
+    if (-not (Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir | Out-Null
+    }
+    Set-Content -Encoding utf8 $lastBuildFile $Type
+}
+
+function Cleanup-OldApks {
+    param([string]$TargetDir)
+    $files = Get-ChildItem -Path $TargetDir -Filter "app-*-*.apk"
+    $entries = foreach ($file in $files) {
+        if ($file.Name -match '^app-(release|prebuild)-(\d+\.\d+\.\d+)\.apk$') {
+            [pscustomobject]@{
+                Path = $file.FullName
+                Name = $file.Name
+                Version = $Matches[2]
+                VersionParts = $Matches[2].Split('.') | ForEach-Object { [int]$_ }
+            }
+        }
+    }
+    $ordered = $entries | Sort-Object @{Expression={$_.VersionParts[0]};Descending=$true}, @{Expression={$_.VersionParts[1]};Descending=$true}, @{Expression={$_.VersionParts[2]};Descending=$true}
+    $toRemove = $ordered | Select-Object -Skip 3
+    foreach ($entry in $toRemove) {
+        Remove-Item $entry.Path -Force
+        Write-Host "Alte APK entfernt: $($entry.Name)" -ForegroundColor Gray
+    }
+}
+
+if ($Prebuild) {
+    Write-Host "Prebuilt Dev-Build erzeugt (Version bleibt $newVersionName)." -ForegroundColor Cyan
+} elseif (-not $Debug) {
+    Write-Host "Neue Version: $newVersionName (code $newVersionCode)" -ForegroundColor Cyan
+} else {
+    Write-Host "Debug-Build: Versionserhöhung übersprungen" -ForegroundColor Yellow
+}
 
 Push-Location "android"
 try {
-    & .\gradlew.bat assembleRelease
+    $task = if ($Prebuild -or $Debug) { "assembleDebug" } else { "assembleRelease" }
+    & .\gradlew.bat $task
     if ($LASTEXITCODE -ne 0) {
         throw "Gradle build failed with exit code $LASTEXITCODE"
     }
@@ -63,32 +102,23 @@ try {
     Pop-Location
 }
 
-$apkDir = "android/app/build/outputs/apk/release"
+$apkDir = "android/app/build/outputs/apk"
 $targetDir = "builds/android"
 
-# Sicherstellen, dass Zielordner existiert
 if (-not (Test-Path $targetDir)) {
     New-Item -ItemType Directory -Path $targetDir | Out-Null
 }
 
-$sourceApk = Join-Path $apkDir "app-release.apk"
-$destApk = Join-Path $targetDir "app-release-$newVersionName.apk"
+$buildType = if ($Prebuild) { "prebuild" } elseif ($Debug) { "debug" } else { "release" }
+$sourceRelative = if ($buildType -eq "release") { "release/app-release.apk" } else { "debug/app-debug.apk" }
+$sourceApk = Join-Path $apkDir $sourceRelative
+$destApk = Join-Path $targetDir "app-$buildType-$newVersionName.apk"
 
 if (Test-Path $sourceApk) {
     Copy-Item -Path $sourceApk -Destination $destApk -Force
     Write-Host "APK archiviert nach: $destApk" -ForegroundColor Green
-
-    # Alte Versionen im Zielordner aufräumen (behalte die neuesten 3)
-    # @(...) erzwingt ein Array, damit .Count auch bei 0 oder 1 Element funktioniert
-    $apks = @(Get-ChildItem -Path $targetDir -Filter "app-release-*.apk") | Sort-Object LastWriteTime -Descending
-    
-    if ($apks.Count -gt 3) {
-        $apks | Select-Object -Skip 3 | ForEach-Object {
-            Remove-Item $_.FullName
-            Write-Host "Altes Release gelöscht: $($_.Name)" -ForegroundColor Gray
-        }
-    }
+    Write-LastBuildType $buildType
+    Cleanup-OldApks -TargetDir $targetDir
 } else {
     Write-Warning "Build war erfolgreich, aber $sourceApk wurde nicht gefunden."
 }
-

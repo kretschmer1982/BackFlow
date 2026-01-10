@@ -1,0 +1,45 @@
+appId: com.kretschmer1982.BackFlow
+---
+# Test: Planner-Routine mit seeded Demo-Workouts
+- clearState
+- launchApp
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-skip"
+    commands:
+      - tapOn:
+          id: "onboarding-skip"
+
+# 1. Seed Workouts via Deep Link
+- openLink: backflow://debug/seed
+- waitForAnimationToEnd
+- assertVisible: ".*"
+
+# 2. Zum Planner navigieren
+- tapOn: "Planner"
+
+# 3. Verifizierung via statische IDs
+## Woche 1
+- assertVisible:
+    id: "planner-workout-di"
+- assertVisible:
+    id: "planner-workout-sa"
+
+## Woche 2
+- swipe:
+    start: 90%, 50%
+    end: 10%, 50%
+- assertVisible:
+    id: "planner-workout-di"
+- assertVisible:
+    id: "planner-workout-sa"
+
+## Woche 3
+- swipe:
+    start: 90%, 50%
+    end: 10%, 50%
+- assertVisible:
+    id: "planner-workout-di"
+- assertVisible:
+    id: "planner-workout-sa"

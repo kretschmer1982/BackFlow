@@ -13,14 +13,32 @@ appId: com.kretschmer1982.BackFlow
 # Versuche optionales Onboarding zu überspringen (falls vorhanden)
 - runFlow:
     when:
-      visible: "(?i)skip|überspringen|weiter"
+      visible:
+        id: "onboarding-skip"
     commands:
       - tapOn:
-          text: "(?i)skip|überspringen|weiter"
+          id: "onboarding-skip"
 
 # Kurze Wartezeit für UI-Stabilisierung
 - extendedWaitUntil:
     visible: ".*"
     timeout: 5000
-
+  
+# Seed Demo-Workouts
+- openLink: backflow://debug/seed
+- waitForAnimationToEnd
 - assertVisible: ".*"
+
+# Zum Planner navigieren
+- tapOn:
+    id: "tab-planner"
+
+# Verifiziere statische Planner-IDs
+- assertVisible:
+    id: "planner-row-di"
+- assertVisible:
+    id: "planner-row-sa"
+- assertVisible:
+    id: "planner-workout-di"
+- assertVisible:
+    id: "planner-workout-sa"

@@ -334,6 +334,7 @@ export default function PlannerSettingsScreen() {
                   styles.saveBtn,
                   { flex: 1, backgroundColor: accentColor, borderColor: accentColor },
                 ]}
+                testID="planner-day-picker-apply"
                 onPress={applyMultiPicker}
                 activeOpacity={0.85}>
                 <Text style={[styles.saveBtnText, { color: '#111827' }]}>Übernehmen</Text>
@@ -352,6 +353,7 @@ export default function PlannerSettingsScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <TouchableOpacity
+            testID="planner-save-settings-button"
             onPress={handleSave}
             style={[styles.saveHeaderButton, { backgroundColor: cardBg, borderColor }]}
             activeOpacity={0.85}>
@@ -377,12 +379,14 @@ export default function PlannerSettingsScreen() {
             <View key={dayIndex} style={styles.dayRow}>
                 <Text style={[styles.dayLabel, { color: textColor }]}>{DAYS[dayIndex]}</Text>
                 <Switch
+                  testID={`planner-day-switch-${dayIndex}`}
                   value={enabled}
                   onValueChange={(val) => void toggleDay(dayIndex, val)}
                   trackColor={{ false: borderColor, true: accentColor }}
                   thumbColor={'#ffffff'}
                 />
                 <TouchableOpacity
+                  testID={`planner-day-workout-select-${dayIndex}`}
                   style={[
                     styles.workoutSelect,
                     { backgroundColor: cardBg, borderColor },

@@ -38,6 +38,7 @@ export default function TabLayout() {
         options={{
           title: 'Workout',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="figure.run" color={color} />,
+          tabBarTestID: 'tab-workout',
         }}
       />
       <Tabs.Screen
@@ -45,6 +46,7 @@ export default function TabLayout() {
         options={{
           title: 'Planner',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
+          tabBarTestID: 'tab-planner',
         }}
       />
       <Tabs.Screen
@@ -52,6 +54,7 @@ export default function TabLayout() {
         options={{
           title: 'Profil',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+          tabBarTestID: 'tab-profile',
         }}
       />
     </Tabs>
