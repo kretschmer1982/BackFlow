@@ -50,7 +50,7 @@ export function usePlannerData() {
 
       if (manual !== undefined) {
         entries = normalizePlannedValueToEntries(manual as PlannedWorkoutsStoredValue);
-      } else {
+      } else if (!isPast) {
         const dow = date.getDay();
         const defaultIds = Array.isArray(plannerSettings.defaultSchedule[dow])
           ? plannerSettings.defaultSchedule[dow]
@@ -81,6 +81,10 @@ export function usePlannerData() {
   const addWorkoutToDate = useCallback(
     async (date: Date, workoutId: string) => {
       const dateKey = toLocalDateKey(date);
+      if (dateKey < todayKey) {
+        console.warn('Prevented adding workout to past date:', dateKey);
+        return;
+      }
       const existing = plannedWorkouts[dateKey];
       const nextEntries =
         existing === undefined ? [] : normalizePlannedValueToEntries(existing as any);
@@ -205,31 +209,24 @@ export function usePlannerData() {
 
   const moveWorkout = useCallback(
     async (fromDate: Date, toDate: Date, workoutId: string) => {
-        // ... (Logik aus moveWorkoutToDate)
-        // Checks müssen im UI passieren oder hier Error werfen.
-        // Ich übernehme die Core-Logik.
-        
         const fromKey = toLocalDateKey(fromDate);
         const toKey = toLocalDateKey(toDate);
-        
-        // Remove from Source
+        if (toKey < todayKey) {
+            console.warn('Prevented moving workout into past date:', toKey);
+            return;
+        }
+
         const fromEntries = getEntriesForDate(fromDate);
-        // Finde den Eintrag (wir nehmen den ersten passenden, falls doppelt)
         const idx = fromEntries.findIndex(e => e.workoutId === workoutId);
-        if (idx === -1) return; // Nichts zu tun
-        
+        if (idx === -1) return;
+
         const remaining = fromEntries.filter((_, i) => i !== idx);
         await savePlannedWorkout(fromKey, remaining.length === 0 ? '' : remaining);
 
-        // Add to Target
-        // Achtung: getEntriesForDate gibt Default zurück, wenn noch nichts gespeichert.
-        // Wir müssen sicherstellen, dass wir das manualisieren.
         const toEntries = getEntriesForDate(toDate);
-        if (toEntries.length >= 3) {
-            throw new Error('TARGET_FULL');
-        }
+        if (toEntries.length >= 3) { throw new Error('TARGET_FULL'); }
         await savePlannedWorkout(toKey, [...toEntries, { workoutId }].slice(0, 3));
-        
+
         await loadData();
         await rescheduleTrainingReminders();
     },

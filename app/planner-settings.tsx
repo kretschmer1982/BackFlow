@@ -296,6 +296,8 @@ export default function PlannerSettingsScreen() {
               <FlatList
                 data={workouts}
                 keyExtractor={(w) => w.id}
+                extraData={tempSelectedIds}
+                keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={[

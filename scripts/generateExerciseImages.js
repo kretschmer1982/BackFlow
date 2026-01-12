@@ -40,3 +40,4 @@ console.log(`✅ ${imageFiles.length} Einträge nach ${outputFile} geschrieben.`
 
 
 
+
